@@ -1,0 +1,13 @@
+{
+  "name": "@gossip/miniapp-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "@gossip/config": "workspace:*",
+    "typescript": "^5.7.2"
+  }
+}

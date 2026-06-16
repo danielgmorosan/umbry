@@ -1,0 +1,244 @@
+@import "tailwindcss";
+
+/* Scan the shared UI package so its utility classes are generated. */
+@source "../../../packages/ui/src";
+
+/* ============================================================
+   Gossip Workspace — design tokens
+   Dark-first "encrypted calm": near-black canvas, mint accent,
+   hairline slate borders, monospace for cryptographic identity.
+   ============================================================ */
+
+@layer base {
+  :root,
+  .dark {
+    color-scheme: dark;
+
+    --canvas: #0f1115; /* deepest background */
+    --surface: #15181c; /* panels / message area */
+    --surface-raised: #1c2127; /* header, cards, hover */
+    --surface-inset: #0b0d10; /* inputs, wells */
+    --slate: #2b333b; /* incoming bubbles, chips */
+    --slate-soft: #232a31;
+
+    --border: #232a31; /* hairlines */
+    --border-strong: #2f3741;
+
+    --text: #eef2f4; /* primary */
+    --text-muted: #8a929b; /* secondary */
+    --text-faint: #5c636b; /* tertiary / placeholders */
+
+    --accent: #7fe9c3; /* signature mint */
+    --accent-bright: #9bf0d4;
+    --accent-deep: #57d6ab; /* hover/pressed */
+    --accent-ink: #07150f; /* text ON mint */
+    --accent-glow: rgba(127, 233, 195, 0.16);
+    --accent-faint: rgba(127, 233, 195, 0.1);
+
+    --danger: #f3776f;
+    --warning: #f4c453;
+    --info: #6f8dff;
+
+    --ring: rgba(127, 233, 195, 0.55);
+  }
+
+  .light {
+    color-scheme: light;
+
+    --canvas: #f5f7f6;
+    --surface: #ffffff;
+    --surface-raised: #ffffff;
+    --surface-inset: #eef1f0;
+    --slate: #e7ecea;
+    --slate-soft: #eef1f0;
+
+    --border: #e2e7e5;
+    --border-strong: #d2dad7;
+
+    --text: #10211b;
+    --text-muted: #5d6b64;
+    --text-faint: #93a09a;
+
+    --accent: #16b886;
+    --accent-bright: #1ed29a;
+    --accent-deep: #0e9d72;
+    --accent-ink: #ffffff;
+    --accent-glow: rgba(22, 184, 134, 0.14);
+    --accent-faint: rgba(22, 184, 134, 0.08);
+
+    --danger: #e0584f;
+    --warning: #c7901c;
+    --info: #4763e6;
+
+    --ring: rgba(22, 184, 134, 0.5);
+  }
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-inset: var(--surface-inset);
+  --color-slate: var(--slate);
+  --color-slate-soft: var(--slate-soft);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-text: var(--text);
+  --color-muted: var(--text-muted);
+  --color-faint: var(--text-faint);
+
+  --color-accent: var(--accent);
+  --color-accent-bright: var(--accent-bright);
+  --color-accent-deep: var(--accent-deep);
+  --color-accent-ink: var(--accent-ink);
+
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+
+  --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.125rem;
+  --radius-2xl: 1.5rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--canvas);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv01";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Atmospheric backdrop: faint mint aurora + fine grain */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(60rem 40rem at 12% -8%, var(--accent-faint), transparent 60%),
+      radial-gradient(50rem 38rem at 105% 8%, rgba(111, 141, 255, 0.06), transparent 55%);
+  }
+
+  ::selection {
+    background: var(--accent-glow);
+    color: var(--text);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+
+  /* Scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--text-faint);
+    background-clip: padding-box;
+  }
+
+  input,
+  textarea,
+  button {
+    font-family: inherit;
+  }
+}
+
+@layer utilities {
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+  .grain {
+    position: relative;
+  }
+  .grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .ring-accent {
+    box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-glow);
+  }
+  .hairline {
+    box-shadow: inset 0 0 0 1px var(--border);
+  }
+  .glow-accent {
+    box-shadow: 0 0 32px -8px var(--accent-glow);
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-rise {
+  animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 var(--accent-glow);
+  }
+  70% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+.animate-pulse-ring {
+  animation: pulse-ring 2s ease-out infinite;
+}

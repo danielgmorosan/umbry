@@ -1,0 +1,30 @@
+{
+  "$comment": "OpenClaw gateway config. Runs as a sidecar per workspace. NEVER ships in the frontend bundle. Secrets via env, not committed.",
+  "gateway": {
+    "host": "127.0.0.1",
+    "port": 8787
+  },
+  "modelProviders": {
+    "ollama": {
+      "baseUrl": "http://127.0.0.1:11434",
+      "$comment": "Native API — NOT the /v1 OpenAI-compat path, which breaks tool calling.",
+      "model": "qwen2.5:14b"
+    },
+    "anthropic": {
+      "apiKeyEnv": "ANTHROPIC_API_KEY",
+      "model": "claude-opus-4-8"
+    }
+  },
+  "routing": {
+    "default": "ollama",
+    "complex": "anthropic",
+    "pinPrivacySensitiveToLocal": true
+  },
+  "plugins": {
+    "gossipChannel": {
+      "$comment": "Bot authenticates as a normal workspace member with its own Gossip identity.",
+      "identityHandleEnv": "OPENCLAW_BOT_HANDLE",
+      "relayBaseUrl": "https://api.usegossip.com"
+    }
+  }
+}
