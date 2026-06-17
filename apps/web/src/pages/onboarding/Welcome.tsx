@@ -11,7 +11,7 @@ export function Welcome() {
       </p>
 
       <div className="mt-8 space-y-3">
-        <Link to="/identity/create" className="block">
+        <Link to="/identity/create?next=create" className="block">
           <div className="group flex items-center gap-4 rounded-2xl border border-border bg-surface-raised p-4 transition-all hover:border-[color:var(--accent)]/50 hover:bg-[color:var(--accent-faint)]">
             <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-accent text-accent-ink">
               <Sparkles className="size-5" />
@@ -24,7 +24,7 @@ export function Welcome() {
           </div>
         </Link>
 
-        <Link to="/workspace/join" className="block">
+        <Link to="/identity/create?next=join" className="block">
           <div className="group flex items-center gap-4 rounded-2xl border border-border bg-surface-raised p-4 transition-all hover:border-border-strong">
             <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-slate text-text">
               <KeyRound className="size-5" />

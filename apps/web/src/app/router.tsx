@@ -7,6 +7,7 @@ import { IdentityCreate } from "@/pages/onboarding/IdentityCreate";
 import { IdentityUnlock } from "@/pages/onboarding/IdentityUnlock";
 import { WorkspaceCreate } from "@/pages/onboarding/WorkspaceCreate";
 import { WorkspaceJoin } from "@/pages/onboarding/WorkspaceJoin";
+import { WorkspaceIndex } from "@/pages/WorkspaceIndex";
 import { ChannelView } from "@/pages/ChannelView";
 import { DMView } from "@/pages/DMView";
 import { Threads } from "@/pages/Threads";
@@ -25,8 +26,6 @@ import { SecuritySettings } from "@/pages/settings/SecuritySettings";
 import { NotificationsSettings } from "@/pages/settings/NotificationsSettings";
 import { AppearanceSettings } from "@/pages/settings/AppearanceSettings";
 
-const WS = "w_gossip";
-
 export const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/welcome" replace /> },
   { path: "/dev/sdk-smoke", element: <SdkSmoke /> },
@@ -44,7 +43,7 @@ export const router = createBrowserRouter([
     path: "/w/:workspaceId",
     element: <AppShell />,
     children: [
-      { index: true, element: <Navigate to="c/c_design" replace /> },
+      { index: true, element: <WorkspaceIndex /> },
       { path: "c/:channelId", element: <ChannelView /> },
       { path: "dm/:dmId", element: <DMView /> },
       { path: "threads", element: <Threads /> },
@@ -70,5 +69,5 @@ export const router = createBrowserRouter([
       { path: "appearance", element: <AppearanceSettings /> },
     ],
   },
-  { path: "*", element: <Navigate to={`/w/${WS}/c/c_design`} replace /> },
+  { path: "*", element: <Navigate to="/welcome" replace /> },
 ]);

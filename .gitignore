@@ -8,3 +8,6 @@ dist/
 .DS_Store
 
 # vendor/gossip is a git submodule (tracked via .gitmodules), not ignored.
+
+# relay persisted state
+services/relay/.data.json

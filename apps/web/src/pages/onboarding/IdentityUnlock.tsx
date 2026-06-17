@@ -4,6 +4,7 @@ import { ArrowRight, Fingerprint, KeyRound, Loader2 } from "lucide-react";
 import { Button, Field, Input } from "@gossip/ui";
 import { GossipMark } from "@gossip/ui";
 import { useSession } from "@/stores/useSession";
+import { useRelay } from "@/stores/useRelay";
 import { validateMnemonic } from "@/lib/sdk";
 
 export function IdentityUnlock() {
@@ -12,6 +13,11 @@ export function IdentityUnlock() {
   const [passphrase, setPassphrase] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const goToApp = () => {
+    const mine = useRelay.getState().myWorkspaces;
+    nav(mine.length > 0 ? `/w/${mine[0].id}` : "/workspace/create");
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +30,7 @@ export function IdentityUnlock() {
     setError(null);
     const ok = await unlock(phrase);
     setBusy(false);
-    if (ok) nav("/w/w_gossip/c/c_design");
+    if (ok) goToApp();
     else setError("Couldn't open a session. Check your connection and try again.");
   };
 

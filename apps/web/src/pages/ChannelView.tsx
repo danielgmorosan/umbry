@@ -4,40 +4,42 @@ import { Hash, Lock, Phone, Sparkles, Users, Info, Pin, ShieldAlert, Circle } fr
 import { PaneHeader, HeaderIconButton } from "@/components/chat/PaneHeader";
 import { Composer } from "@/components/chat/Composer";
 import { AiSidePanel } from "@/components/chat/AiSidePanel";
-import { Avatar, Badge } from "@gossip/ui";
-import { channelById } from "@/data/mock";
-import { useGroupChat } from "@/stores/useGroupChat";
+import { Badge } from "@gossip/ui";
+import { Avatar } from "@gossip/ui";
+import { useRelay } from "@/stores/useRelay";
 import { useSession } from "@/stores/useSession";
 import { formatTime } from "@/lib/utils";
 
 export function ChannelView() {
-  const { workspaceId = "w_gossip", channelId = "c_design" } = useParams();
-  const channel = channelById(channelId);
-  const [aiOpen, setAiOpen] = useState(channelId === "c_design");
+  const { workspaceId = "", channelId = "" } = useParams();
+  const [aiOpen, setAiOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const join = useGroupChat((s) => s.join);
-  const post = useGroupChat((s) => s.post);
-  const conn = useGroupChat((s) => s.conn);
-  const messages = useGroupChat((s) => s.messagesByChannel[channelId]) ?? [];
-  const presence = useGroupChat((s) => s.presenceByChannel[channelId]) ?? 0;
+  const workspace = useRelay((s) => s.workspace);
+  const channel = workspace?.channels.find((c) => c.id === channelId);
+  const conn = useRelay((s) => s.conn);
+  const messages = useRelay((s) => s.messagesByChannel[channelId]) ?? [];
+  const presence = useRelay((s) => s.presenceByChannel[channelId]) ?? 0;
   const myId = useSession((s) => s.userId);
 
   useEffect(() => {
-    join(channelId);
-  }, [channelId, join]);
+    if (workspaceId && channelId) useRelay.getState().joinChannel(workspaceId, channelId);
+  }, [workspaceId, channelId]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages]);
 
+  const name = channel?.name ?? "channel";
+  const isPrivate = channel?.type === "private";
+
   return (
     <div className="flex min-h-0 flex-1">
       <div className="flex min-w-0 flex-1 flex-col">
         <PaneHeader
-          icon={channel.type === "private" ? <Lock className="size-[18px] text-faint" /> : <Hash className="size-[18px] text-faint" />}
-          title={channel.name}
-          subtitle={channel.topic}
+          icon={isPrivate ? <Lock className="size-[18px] text-faint" /> : <Hash className="size-[18px] text-faint" />}
+          title={name}
+          subtitle={channel?.topic || undefined}
           badge={
             <span title="Channel messages are workspace-confidential (TLS via the relay), not E2E in v1.">
               <Badge tone="warning" className="ml-1">
@@ -65,33 +67,28 @@ export function ChannelView() {
         />
 
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
-          {/* Channel intro */}
           <div className="px-5 pb-2 pt-8">
             <div className="grid size-12 place-items-center rounded-2xl bg-surface-raised">
-              {channel.type === "private" ? <Lock className="size-6 text-accent" /> : <Hash className="size-6 text-accent" />}
+              {isPrivate ? <Lock className="size-6 text-accent" /> : <Hash className="size-6 text-accent" />}
             </div>
             <h2 className="mt-3 font-display text-2xl font-bold text-text">
-              {channel.type === "private" ? "" : "#"}
-              {channel.name}
+              {isPrivate ? "" : "#"}
+              {name}
             </h2>
-            <p className="mt-1 max-w-xl text-[14px] text-muted">This is the start of #{channel.name}. {channel.topic}</p>
+            <p className="mt-1 max-w-xl text-[14px] text-muted">This is the start of #{name}. {channel?.topic}</p>
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--accent-faint)] px-2.5 py-1.5 text-[13px] text-text">
               <ShieldAlert className="size-3.5 text-warning" /> Group messages are relay-backed and workspace-confidential — not E2E yet.
             </div>
           </div>
 
-          {messages.length === 0 && (
-            <p className="px-5 py-8 text-[13px] text-faint">No messages yet — say hello to the channel.</p>
-          )}
+          {messages.length === 0 && <p className="px-5 py-8 text-[13px] text-faint">No messages yet — say hello to the channel.</p>}
           {messages.map((m, i) => {
             const prev = messages[i - 1];
             const showAuthor = !prev || prev.senderId !== m.senderId || m.ts - prev.ts > 5 * 60 * 1000;
             const mine = m.senderId === myId;
             return (
               <div key={m.id} className={`group flex gap-3 px-5 ${showAuthor ? "mt-3 pt-1" : "py-0.5"} hover:bg-surface/60`}>
-                <div className="w-9 shrink-0">
-                  {showAuthor && <Avatar name={m.senderName} id={m.senderId} size={36} />}
-                </div>
+                <div className="w-9 shrink-0">{showAuthor && <Avatar name={m.senderName} id={m.senderId} size={36} />}</div>
                 <div className="min-w-0 flex-1">
                   {showAuthor && (
                     <div className="flex items-center gap-2">
@@ -108,10 +105,10 @@ export function ChannelView() {
           <div className="h-4" />
         </div>
 
-        <Composer placeholder={`Message #${channel.name}`} onSend={(text) => post(channelId, text)} />
+        <Composer placeholder={`Message #${name}`} onSend={(text) => useRelay.getState().post(workspaceId, channelId, text)} />
       </div>
 
-      {aiOpen && <AiSidePanel channelName={channel.name} onClose={() => setAiOpen(false)} />}
+      {aiOpen && <AiSidePanel channelName={name} onClose={() => setAiOpen(false)} />}
     </div>
   );
 }

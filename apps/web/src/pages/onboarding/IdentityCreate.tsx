@@ -1,19 +1,34 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Copy, RefreshCw, Check, ShieldCheck, Eye, EyeOff } from "lucide-react";
-import { Button } from "@gossip/ui";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, ArrowRight, Copy, RefreshCw, Check, ShieldCheck, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Button, Field, Input } from "@gossip/ui";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/stores/useSession";
 
 export function IdentityCreate() {
   const nav = useNavigate();
-  const createIdentity = useSession((s) => s.createIdentity);
+  const [params] = useSearchParams();
+  const next = params.get("next") === "join" ? "/workspace/join" : "/workspace/create";
+  const { createIdentity, unlock, setDisplayName } = useSession();
   const [revealed, setRevealed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   // Generate a real BIP39 mnemonic once on mount (stored in the session store).
   const [mnemonic, setMnemonic] = useState(() => createIdentity());
   const WORDS = mnemonic.split(/\s+/);
+
+  const cont = async () => {
+    setDisplayName(name.trim());
+    setBusy(true);
+    setError(null);
+    const ok = await unlock(mnemonic);
+    setBusy(false);
+    if (ok) nav(next);
+    else setError("Couldn't open a session. Check your connection and try again.");
+  };
 
   const copy = () => {
     navigator.clipboard?.writeText(mnemonic);
@@ -40,6 +55,12 @@ export function IdentityCreate() {
         This 12-word phrase <span className="text-text">is</span> your identity. There's no email to
         reset it — write it down and keep it offline.
       </p>
+
+      <div className="mt-5">
+        <Field label="Your name" hint="Shown to others in group channels.">
+          <Input placeholder="e.g. Daniel" value={name} onChange={(e) => setName(e.target.value)} />
+        </Field>
+      </div>
 
       <div className="relative mt-6">
         <div className={cn("grid grid-cols-3 gap-2 rounded-2xl border border-border bg-surface-inset p-3", !revealed && "blur-sm select-none")}>
@@ -102,8 +123,18 @@ export function IdentityCreate() {
         </span>
       </label>
 
-      <Button block size="lg" className="mt-6" disabled={!saved || !revealed} onClick={() => nav("/workspace/create")}>
-        Continue <ArrowRight className="size-4" />
+      {error && <p className="mt-4 text-[13px] text-danger">{error}</p>}
+
+      <Button block size="lg" className="mt-6" disabled={!saved || !revealed || !name.trim() || busy} onClick={cont}>
+        {busy ? (
+          <>
+            <Loader2 className="size-4 animate-spin" /> Creating your identity…
+          </>
+        ) : (
+          <>
+            Continue <ArrowRight className="size-4" />
+          </>
+        )}
       </Button>
     </div>
   );
