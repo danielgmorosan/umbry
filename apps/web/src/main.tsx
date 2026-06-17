@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
 import { router } from "./app/router";
 import { useSession } from "./stores/useSession";
+import "./lib/devLivekit";
 import "./index.css";
 
 // Warm up the SDK + load WASM early so unlock is fast (fire-and-forget).
