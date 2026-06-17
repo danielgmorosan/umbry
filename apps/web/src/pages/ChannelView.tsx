@@ -9,6 +9,7 @@ import { Avatar } from "@gossip/ui";
 import { useRelay } from "@/stores/useRelay";
 import { useSession } from "@/stores/useSession";
 import { formatTime } from "@/lib/utils";
+import { useStartDm } from "@/lib/useStartDm";
 
 export function ChannelView() {
   const { workspaceId = "", channelId = "" } = useParams();
@@ -21,6 +22,7 @@ export function ChannelView() {
   const messages = useRelay((s) => s.messagesByChannel[channelId]) ?? [];
   const presence = useRelay((s) => s.presenceByChannel[channelId]) ?? 0;
   const myId = useSession((s) => s.userId);
+  const startDm = useStartDm();
 
   useEffect(() => {
     if (workspaceId && channelId) useRelay.getState().joinChannel(workspaceId, channelId);
@@ -88,11 +90,27 @@ export function ChannelView() {
             const mine = m.senderId === myId;
             return (
               <div key={m.id} className={`group flex gap-3 px-5 ${showAuthor ? "mt-3 pt-1" : "py-0.5"} hover:bg-surface/60`}>
-                <div className="w-9 shrink-0">{showAuthor && <Avatar name={m.senderName} id={m.senderId} size={36} />}</div>
+                <div className="w-9 shrink-0">
+                  {showAuthor && (
+                    <button
+                      onClick={() => startDm(m.senderId, m.senderName)}
+                      title={mine ? "Your notes" : `Message ${m.senderName}`}
+                      className="transition-transform hover:scale-105"
+                    >
+                      <Avatar name={m.senderName} id={m.senderId} size={36} />
+                    </button>
+                  )}
+                </div>
                 <div className="min-w-0 flex-1">
                   {showAuthor && (
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-text">{m.senderName}</span>
+                      <button
+                        onClick={() => startDm(m.senderId, m.senderName)}
+                        className="font-semibold text-text hover:underline"
+                        title={mine ? "Your notes" : `Message ${m.senderName}`}
+                      >
+                        {m.senderName}
+                      </button>
                       {mine && <span className="text-[11px] text-faint">you</span>}
                       <span className="text-[11px] text-faint">{formatTime(new Date(m.ts))}</span>
                     </div>
