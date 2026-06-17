@@ -67,6 +67,8 @@ export default defineConfig({
       // LiveKit token (signed server-side) + config, served by the relay.
       "/livekit-token": { target: "http://localhost:8788", rewrite: (p) => p.replace(/^\/livekit-token/, "/token") },
       "/livekit-config": { target: "http://localhost:8788" },
+      // OpenClaw AI gateway (lives in the relay; only sees channel data, never DMs).
+      "/openclaw": { target: "http://localhost:8788", rewrite: (p) => p.replace(/^\/openclaw/, "/ai") },
     },
   },
   preview: { headers: coopCoep },

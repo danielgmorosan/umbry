@@ -41,6 +41,15 @@ const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET ?? "";
 const livekitConfigured = Boolean(LIVEKIT_URL && LIVEKIT_API_KEY && LIVEKIT_API_SECRET);
 
+// ── OpenClaw AI (model routing) ──────────────────────────────────────
+// Default route = local Ollama (native /api/chat, NOT /v1 — keeps tool-calling intact).
+// Cloud (Anthropic) is an opt-in route added later. The AI lives here in the relay, which
+// only holds CHANNEL data — so it structurally cannot read E2E DMs.
+const AI_ROUTE = process.env.AI_ROUTE ?? "local";
+const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://127.0.0.1:11434";
+const AI_MODEL = process.env.AI_MODEL ?? "qwen2.5:14b";
+const MAX_MSGS_PER_CHANNEL = 120;
+
 /** Persistent state. */
 let db = { workspaces: {}, messages: {} }; // workspaces[id], messages[`${wsId}/${chId}`] = []
 if (existsSync(DATA_FILE)) {
@@ -126,6 +135,77 @@ function readBody(req) {
     req.on("end", () => resolve(b));
   });
 }
+
+// ── AI helpers ───────────────────────────────────────────────────────
+function gatherChannelContext(workspaceId, channelIds) {
+  const ws = db.workspaces[workspaceId];
+  if (!ws) return { transcript: "", channels: [], citations: [] };
+  const channels = [];
+  const citations = [];
+  let transcript = "";
+  for (const chId of channelIds) {
+    const ch = ws.channels[chId];
+    if (!ch) continue; // only channels that exist in this workspace
+    const msgs = (db.messages[`${workspaceId}/${chId}`] ?? []).slice(-MAX_MSGS_PER_CHANNEL);
+    if (msgs.length === 0) continue;
+    channels.push(ch.name);
+    transcript += `\n## #${ch.name}\n`;
+    for (const m of msgs) {
+      const t = new Date(m.ts).toISOString().slice(0, 16).replace("T", " ");
+      transcript += `[${t}] ${m.senderName}: ${m.body}\n`;
+      citations.push({ channelId: chId, messageId: m.id, ts: t });
+    }
+  }
+  return { transcript: transcript.trim(), channels, citations };
+}
+
+async function ollamaChat(system, user) {
+  const res = await fetch(`${OLLAMA_URL}/api/chat`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      model: AI_MODEL,
+      stream: false,
+      options: { num_ctx: 8192, temperature: 0.3 },
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+    }),
+  });
+  if (!res.ok) throw new Error(`ollama ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const data = await res.json();
+  return data?.message?.content ?? "";
+}
+
+const SYSTEM_PROMPT =
+  "You are OpenClaw, a privacy-first assistant inside a team workspace. " +
+  "You can ONLY see the channel content provided to you below — you have no access to direct messages or anything else. " +
+  "Answer strictly from the provided channel content. If the answer isn't there, say so. " +
+  "Be concise and well-structured; use short bullets for recaps and call out decisions and action items.";
+
+async function runAiJob({ workspaceId, channelScope, type, prompt }) {
+  const { transcript, channels, citations } = gatherChannelContext(workspaceId, channelScope ?? []);
+  const ask =
+    type === "recap"
+      ? `Recap these channels — key updates, decisions, and action items.${prompt ? " Focus: " + prompt : ""}`
+      : type === "notes"
+        ? `Produce meeting-style notes and action items from this content.${prompt ? " Focus: " + prompt : ""}`
+        : prompt || "Summarize the most important points.";
+  const context = transcript
+    ? `Channel content you may use (channels: ${channels.map((c) => "#" + c).join(", ") || "none"}):\n${transcript}`
+    : "There is no channel content available for the requested scope.";
+  const text = await ollamaChat(SYSTEM_PROMPT, `${context}\n\n---\nRequest: ${ask}`);
+  return {
+    id: `job_${randomUUID().slice(0, 8)}`,
+    type: type ?? "qa",
+    route: AI_ROUTE,
+    model: AI_MODEL,
+    text,
+    citations: citations.slice(0, 8),
+    createdAt: new Date().toISOString(),
+  };
+}
 const httpServer = createServer(async (req, res) => {
   const json = (code, obj) => {
     res.writeHead(code, { "content-type": "application/json" });
@@ -144,6 +224,33 @@ const httpServer = createServer(async (req, res) => {
       return json(200, { token: await at.toJwt(), url: LIVEKIT_URL });
     } catch (e) {
       return json(500, { error: String(e) });
+    }
+  }
+  if (req.method === "GET" && req.url === "/ai/health") {
+    let ollamaUp = false;
+    let hasModel = false;
+    try {
+      const r = await fetch(`${OLLAMA_URL}/api/tags`);
+      ollamaUp = r.ok;
+      if (r.ok) {
+        const tags = await r.json();
+        hasModel = (tags.models ?? []).some((m) => m.name?.startsWith(AI_MODEL.split(":")[0]));
+      }
+    } catch {
+      /* down */
+    }
+    return json(200, { ok: ollamaUp && hasModel, route: AI_ROUTE, model: AI_MODEL, ollama: ollamaUp, hasModel });
+  }
+  if (req.method === "POST" && req.url === "/ai/jobs") {
+    try {
+      const body = JSON.parse((await readBody(req)) || "{}");
+      if (!body.workspaceId) return json(400, { error: "workspaceId required" });
+      const result = await runAiJob(body);
+      return json(200, result);
+    } catch (e) {
+      const msg = String(e);
+      const code = /ECONNREFUSED|fetch failed|ollama/.test(msg) ? 503 : 500;
+      return json(code, { error: code === 503 ? "Local model unavailable — is Ollama running?" : msg });
     }
   }
   if (req.method === "GET" && req.url === "/health") return json(200, { ok: true, livekit: livekitConfigured });

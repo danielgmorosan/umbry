@@ -126,7 +126,7 @@ export function ChannelView() {
         <Composer placeholder={`Message #${name}`} onSend={(text) => useRelay.getState().post(workspaceId, channelId, text)} />
       </div>
 
-      {aiOpen && <AiSidePanel channelName={name} onClose={() => setAiOpen(false)} />}
+      {aiOpen && <AiSidePanel workspaceId={workspaceId} channelId={channelId} channelName={name} onClose={() => setAiOpen(false)} />}
     </div>
   );
 }
