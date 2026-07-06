@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./stack": "./src/stack/index.ts",
+    "./stack/tokens.css": "./src/stack/tokens.css"
   },
   "dependencies": {
     "clsx": "^2.1.1",

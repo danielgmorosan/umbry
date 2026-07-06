@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Stack design system tokens (light-first monochrome; --st-* namespaced). */
+@import "../../../packages/ui/src/stack/tokens.css";
+
 /* Scan the shared UI package so its utility classes are generated. */
 @source "../../../packages/ui/src";
 

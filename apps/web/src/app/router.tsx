@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AppShell } from "./AppShell";
 import { SdkSmoke } from "@/pages/dev/SdkSmoke";
+import { Styleguide } from "@/pages/dev/Styleguide";
 import { OnboardingLayout } from "@/pages/onboarding/OnboardingLayout";
 import { Welcome } from "@/pages/onboarding/Welcome";
 import { IdentityCreate } from "@/pages/onboarding/IdentityCreate";
@@ -29,6 +30,8 @@ import { AppearanceSettings } from "@/pages/settings/AppearanceSettings";
 export const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/welcome" replace /> },
   { path: "/dev/sdk-smoke", element: <SdkSmoke /> },
+  { path: "/dev", element: <Navigate to="/dev/styleguide" replace /> },
+  { path: "/dev/styleguide", element: <Styleguide /> },
   {
     element: <OnboardingLayout />,
     children: [

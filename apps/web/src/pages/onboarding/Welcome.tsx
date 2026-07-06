@@ -46,6 +46,14 @@ export function Welcome() {
           </Button>
         </Link>
       </div>
+
+      {import.meta.env.DEV && (
+        <p className="mt-6 text-center text-[12px] text-faint">
+          <Link to="/dev/styleguide" className="underline underline-offset-2 hover:text-muted">
+            Stack design system styleguide
+          </Link>
+        </p>
+      )}
     </div>
   );
 }
