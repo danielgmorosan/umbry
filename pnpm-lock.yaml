@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@capacitor/core':
+        specifier: ^8.0.0
+        version: 8.4.1
       turbo:
         specifier: ^2.3.3
         version: 2.9.18
@@ -278,6 +281,9 @@ packages:
 
   '@bufbuild/protobuf@1.10.1':
     resolution: {integrity: sha512-wJ8ReQbHxsAfXhrf9ixl0aYbZorRuOWpBNzm8pL8ftmSxQx/wnJD5Eg861NwJU/czy2VXFIebCeZnZrI9rktIQ==}
+
+  '@capacitor/core@8.4.1':
+    resolution: {integrity: sha512-xqhOGLbTAYeOWK+IDUNSjQJAPapQjRHrIcgk9PYp52or9zFTaaMko31uNi16N6W+CRJ8VrRram6fOYILkBG2Hg==}
 
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
@@ -2502,6 +2508,10 @@ snapshots:
       '@babel/helper-validator-identifier': 7.29.7
 
   '@bufbuild/protobuf@1.10.1': {}
+
+  '@capacitor/core@8.4.1':
+    dependencies:
+      tslib: 2.8.1
 
   '@drizzle-team/brocli@0.10.2': {}
 
