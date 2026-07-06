@@ -34,7 +34,8 @@ if (existsSync(ENV_FILE)) {
 
 const PORT = Number(process.env.PORT ?? 8788);
 const HISTORY_CAP = 500;
-const DATA_FILE = join(HERE, ".data.json");
+// DATA_DIR points at a mounted Fly volume in production so .data.json survives deploys/restarts.
+const DATA_FILE = join(process.env.DATA_DIR ?? HERE, ".data.json");
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
@@ -206,7 +207,18 @@ async function runAiJob({ workspaceId, channelScope, type, prompt }) {
     createdAt: new Date().toISOString(),
   };
 }
+// The web app is deployed on a different origin (Vercel) than the relay (Fly.io), so the
+// HTTP endpoints below need CORS. WS connections aren't subject to CORS the same way.
+const CORS_ORIGIN = process.env.CORS_ORIGIN ?? "*";
+
 const httpServer = createServer(async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", CORS_ORIGIN);
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "content-type");
+  if (req.method === "OPTIONS") {
+    res.writeHead(204);
+    return res.end();
+  }
   const json = (code, obj) => {
     res.writeHead(code, { "content-type": "application/json" });
     res.end(JSON.stringify(obj));

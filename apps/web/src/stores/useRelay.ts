@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { useSession } from "./useSession";
+import { relayWsUrl } from "@/lib/relayBase";
 
 export interface ChannelMsg {
   id: string;
@@ -90,8 +91,7 @@ interface RelayMsg {
 }
 
 function wsUrl() {
-  const proto = location.protocol === "https:" ? "wss" : "ws";
-  return `${proto}://${location.host}/group-ws`;
+  return relayWsUrl("/group-ws");
 }
 
 function sendHello() {

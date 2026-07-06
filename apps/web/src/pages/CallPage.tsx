@@ -6,6 +6,7 @@ import { LiveKitRoom, VideoConference } from "@livekit/components-react";
 import { Button } from "@gossip/ui";
 import { useSession } from "@/stores/useSession";
 import { useRelay } from "@/stores/useRelay";
+import { relayUrl } from "@/lib/relayBase";
 
 type State =
   | { phase: "loading" }
@@ -26,14 +27,14 @@ export function CallPage() {
     let active = true;
     (async () => {
       try {
-        const cfg = await fetch("/livekit-config").then((r) => r.json());
+        const cfg = await fetch(relayUrl("/livekit-config")).then((r) => r.json());
         if (!cfg.configured) {
           if (active) setState({ phase: "unconfigured" });
           return;
         }
         const room = `${workspaceId}:${channelId}`;
         const identity = userId ?? `guest-${Math.random().toString(36).slice(2, 8)}`;
-        const res = await fetch("/livekit-token", {
+        const res = await fetch(relayUrl("/livekit-token"), {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ room, identity, name: displayName || "Guest" }),

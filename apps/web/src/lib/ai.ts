@@ -1,5 +1,6 @@
 // OpenClaw AI client. The frontend only ever talks to the gateway (relay) over HTTP —
 // the model runs locally (Ollama) and only sees channel data, never DMs.
+import { relayUrl } from "./relayBase";
 
 export interface AiCitation {
   channelId: string;
@@ -24,7 +25,7 @@ export interface AiHealth {
 }
 
 export async function aiHealth(): Promise<AiHealth> {
-  return fetch("/openclaw/health").then((r) => r.json());
+  return fetch(relayUrl("/openclaw/health")).then((r) => r.json());
 }
 
 export async function runAiJob(req: {
@@ -33,7 +34,7 @@ export async function runAiJob(req: {
   type: "recap" | "notes" | "qa";
   prompt?: string;
 }): Promise<AiResult> {
-  const res = await fetch("/openclaw/jobs", {
+  const res = await fetch(relayUrl("/openclaw/jobs"), {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(req),

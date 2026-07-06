@@ -1,0 +1,28 @@
+# Fly.io app config for the relay. Rename `app` again if this is taken too, then:
+#   fly launch --no-deploy --copy-config   (first time, from services/relay/)
+#   fly volumes create gossip_relay_data --size 1 --region iad
+#   fly secrets set LIVEKIT_URL=... LIVEKIT_API_KEY=... LIVEKIT_API_SECRET=... CORS_ORIGIN=https://<vercel-domain>
+#   fly deploy
+app = "gossip-relay-danielgm"
+primary_region = "iad"
+
+[build]
+
+[env]
+  DATA_DIR = "/data"
+
+[[mounts]]
+  source = "gossip_relay_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8788
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
