@@ -59,12 +59,18 @@ export function SearchPage() {
             {results.map((r) => (
               <SearchResultRow
                 key={r.id}
-                type="message"
+                type={r.threadRootId ? "reply" : "message"}
                 icon={<Hash />}
                 meta={`#${r.channelName} · ${r.senderName}`}
                 title={r.body.length > 120 ? r.body.slice(0, 120) + "…" : r.body}
                 time={formatTime(new Date(r.ts))}
-                onClick={() => nav(`/w/${workspaceId}/c/${r.channelId}`)}
+                onClick={() =>
+                  nav(
+                    r.threadRootId
+                      ? `/w/${workspaceId}/c/${r.channelId}?thread=${r.threadRootId}`
+                      : `/w/${workspaceId}/c/${r.channelId}`,
+                  )
+                }
               />
             ))}
           </div>

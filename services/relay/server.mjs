@@ -398,6 +398,7 @@ wss.on("connection", (ws) => {
           body,
           ts: Date.now(),
           clientMsgId: m.clientMsgId ?? null,
+          threadRootId: m.threadRootId ? String(m.threadRootId).slice(0, 80) : null,
         };
         const arr = db.messages[chKey] ?? [];
         arr.push(msg);

@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { Hash, Lock, Phone, Sparkles, Users, ShieldAlert, Circle } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useSearchParams, Link } from "react-router-dom";
+import { Hash, Lock, Phone, Sparkles, Users, ShieldAlert, Circle, MessageSquareReply } from "lucide-react";
 import { PaneHeader, HeaderIconButton } from "@/components/chat/PaneHeader";
 import { Composer } from "@/components/chat/Composer";
 import { AiSidePanel } from "@/components/chat/AiSidePanel";
+import { ThreadPanel } from "@/components/chat/ThreadPanel";
 import { Avatar } from "@gossip/ui/stack";
 import { useRelay } from "@/stores/useRelay";
 import { useSession } from "@/stores/useSession";
@@ -12,6 +13,8 @@ import { useStartDm } from "@/lib/useStartDm";
 
 export function ChannelView() {
   const { workspaceId = "", channelId = "" } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const threadId = searchParams.get("thread");
   const [aiOpen, setAiOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -23,13 +26,38 @@ export function ChannelView() {
   const myId = useSession((s) => s.userId);
   const startDm = useStartDm();
 
+  // Main feed shows only thread roots / plain messages; replies live in the panel.
+  const feed = useMemo(() => messages.filter((m) => !m.threadRootId), [messages]);
+  const replyStats = useMemo(() => {
+    const map = new Map<string, { count: number; lastTs: number }>();
+    for (const m of messages) {
+      if (!m.threadRootId) continue;
+      const cur = map.get(m.threadRootId) ?? { count: 0, lastTs: 0 };
+      map.set(m.threadRootId, { count: cur.count + 1, lastTs: Math.max(cur.lastTs, m.ts) });
+    }
+    return map;
+  }, [messages]);
+
+  const openThread = (rootId: string | null) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (rootId) next.set("thread", rootId);
+        else next.delete("thread");
+        return next;
+      },
+      { replace: true },
+    );
+    if (rootId) setAiOpen(false);
+  };
+
   useEffect(() => {
     if (workspaceId && channelId) useRelay.getState().joinChannel(workspaceId, channelId);
   }, [workspaceId, channelId]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [messages]);
+  }, [feed.length]);
 
   const name = channel?.name ?? "channel";
   const isPrivate = channel?.type === "private";
@@ -61,7 +89,7 @@ export function ChannelView() {
               <Link to={`/w/${workspaceId}/members`}>
                 <HeaderIconButton label="Members"><Users className="size-4" /></HeaderIconButton>
               </Link>
-              <HeaderIconButton label="Ask OpenClaw" active={aiOpen} onClick={() => setAiOpen((v) => !v)}>
+              <HeaderIconButton label="Ask OpenClaw" active={aiOpen} onClick={() => { setAiOpen((v) => !v); if (!aiOpen) openThread(null); }}>
                 <Sparkles className="size-4" />
               </HeaderIconButton>
             </>
@@ -83,13 +111,14 @@ export function ChannelView() {
             </div>
           </div>
 
-          {messages.length === 0 && <p className="px-5 py-8 text-[13px] text-ink-faint">No messages yet — say hello to the channel.</p>}
-          {messages.map((m, i) => {
-            const prev = messages[i - 1];
+          {feed.length === 0 && <p className="px-5 py-8 text-[13px] text-ink-faint">No messages yet — say hello to the channel.</p>}
+          {feed.map((m, i) => {
+            const prev = feed[i - 1];
             const showAuthor = !prev || prev.senderId !== m.senderId || m.ts - prev.ts > 5 * 60 * 1000;
             const mine = m.senderId === myId;
+            const stats = replyStats.get(m.id);
             return (
-              <div key={m.id} className={`group flex gap-3 px-5 ${showAuthor ? "mt-3 pt-1" : "py-0.5"} hover:bg-paper-2`}>
+              <div key={m.id} className={`group relative flex gap-3 px-5 ${showAuthor ? "mt-3 pt-1" : "py-0.5"} hover:bg-paper-2`}>
                 <div className="w-9 shrink-0">
                   {showAuthor && (
                     <button
@@ -116,7 +145,27 @@ export function ChannelView() {
                     </div>
                   )}
                   <div className="whitespace-pre-wrap text-[14px] leading-relaxed text-ink">{m.body}</div>
+                  {stats && (
+                    <button
+                      onClick={() => openThread(m.id)}
+                      className="mt-1 inline-flex items-center gap-1.5 rounded-control px-1.5 py-0.5 text-[12.5px] font-medium text-ink-mute transition-colors hover:bg-field hover:text-ink"
+                    >
+                      <MessageSquareReply className="size-3.5" />
+                      {stats.count} {stats.count === 1 ? "reply" : "replies"}
+                      <span className="font-normal text-ink-faint">· last {formatTime(new Date(stats.lastTs))}</span>
+                    </button>
+                  )}
                 </div>
+
+                {/* Hover actions */}
+                <button
+                  onClick={() => openThread(m.id)}
+                  title="Reply in thread"
+                  aria-label="Reply in thread"
+                  className="absolute -top-2.5 right-4 hidden items-center gap-1 rounded-control border border-line bg-paper px-2 py-1 text-[12px] text-ink-mute shadow-[var(--st-shadow-card)] hover:text-ink group-hover:inline-flex"
+                >
+                  <MessageSquareReply className="size-3.5" /> Reply
+                </button>
               </div>
             );
           })}
@@ -126,7 +175,11 @@ export function ChannelView() {
         <Composer placeholder={`Message #${name}`} onSend={(text) => useRelay.getState().post(workspaceId, channelId, text)} />
       </div>
 
-      {aiOpen && <AiSidePanel workspaceId={workspaceId} channelId={channelId} channelName={name} onClose={() => setAiOpen(false)} />}
+      {threadId ? (
+        <ThreadPanel workspaceId={workspaceId} channelId={channelId} rootId={threadId} onClose={() => openThread(null)} />
+      ) : (
+        aiOpen && <AiSidePanel workspaceId={workspaceId} channelId={channelId} channelName={name} onClose={() => setAiOpen(false)} />
+      )}
     </div>
   );
 }

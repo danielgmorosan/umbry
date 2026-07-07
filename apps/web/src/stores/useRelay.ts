@@ -10,6 +10,8 @@ export interface ChannelMsg {
   senderName: string;
   body: string;
   ts: number;
+  /** Set on replies — id of the thread's root message. */
+  threadRootId?: string | null;
 }
 export interface RelayChannel {
   id: string;
@@ -69,7 +71,7 @@ interface RelayState {
   openWorkspace: (workspaceId: string) => Promise<RelayWorkspace | null>;
   createChannel: (workspaceId: string, name: string, type?: "public" | "private", topic?: string) => Promise<{ ok: true; channel: RelayChannel } | { ok: false; error: string }>;
   joinChannel: (workspaceId: string, channelId: string) => void;
-  post: (workspaceId: string, channelId: string, body: string) => void;
+  post: (workspaceId: string, channelId: string, body: string, threadRootId?: string) => void;
 }
 
 let ws: WebSocket | null = null;
@@ -284,10 +286,10 @@ export const useRelay = create<RelayState>((set, get) => ({
     trySend();
   },
 
-  post: (workspaceId, channelId, body) => {
+  post: (workspaceId, channelId, body, threadRootId) => {
     const text = body.trim();
     if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-    ws.send(JSON.stringify({ type: "post", workspaceId, channelId, body: text, clientMsgId: crypto.randomUUID() }));
+    ws.send(JSON.stringify({ type: "post", workspaceId, channelId, body: text, threadRootId, clientMsgId: crypto.randomUUID() }));
   },
 }));
 
