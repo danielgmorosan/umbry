@@ -62,6 +62,29 @@ if (existsSync(DATA_FILE)) {
     /* start fresh */
   }
 }
+
+// One-time scrub: locked/anonymous connections used to be auto-added as members
+// ("anon-xxxxxx" ghosts). Anonymous ids are never real members — drop them.
+const isAnon = (userId) => !userId || String(userId).startsWith("anon-");
+{
+  let scrubbed = 0;
+  for (const workspace of Object.values(db.workspaces)) {
+    for (const uid of Object.keys(workspace.members ?? {})) {
+      if (isAnon(uid)) {
+        delete workspace.members[uid];
+        scrubbed++;
+      }
+    }
+  }
+  if (scrubbed > 0) {
+    console.log(`[relay] scrubbed ${scrubbed} anonymous ghost member(s)`);
+    try {
+      writeFileSync(DATA_FILE, JSON.stringify(db));
+    } catch {
+      /* saved on next mutation */
+    }
+  }
+}
 let saveTimer = null;
 function save() {
   if (saveTimer) return;
@@ -319,6 +342,10 @@ wss.on("connection", (ws) => {
           send(ws, { type: "error", ref: m.ref, message: "Workspace not found. Check the code." });
           break;
         }
+        if (isAnon(client.userId)) {
+          send(ws, { type: "error", ref: m.ref, message: "Open your session before joining a workspace." });
+          break;
+        }
         workspace.members[client.userId] = workspace.members[client.userId] ?? {
           userId: client.userId,
           name: client.name,
@@ -339,10 +366,12 @@ wss.on("connection", (ws) => {
           break;
         }
         client.wsSubs.add(workspace.id);
-        // ensure membership (e.g. creator returning) — keep if present
-        if (client.userId && !workspace.members[client.userId]) {
+        // ensure membership (e.g. creator returning) — but never for anonymous
+        // (locked-session) connections; those may read but aren't members.
+        if (!isAnon(client.userId) && !workspace.members[client.userId]) {
           workspace.members[client.userId] = { userId: client.userId, name: client.name, role: "member", joinedAt: Date.now() };
           save();
+          broadcastWorkspace(workspace.id, { type: "memberJoined", workspaceId: workspace.id, member: workspace.members[client.userId] });
         }
         send(ws, { type: "workspace", ref: m.ref, workspace: serializeWorkspace(workspace) });
         break;
