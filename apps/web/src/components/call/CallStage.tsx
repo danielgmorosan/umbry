@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { forwardRef, useEffect, useRef, useState, type ReactNode } from "react";
 import { Track, RemoteParticipant, type Participant } from "livekit-client";
 import {
   VideoTrack,
@@ -38,6 +38,7 @@ export function CallStage({ target }: { target: CallTarget }) {
   const { toggleMic, toggleCam, toggleScreen, leave } = useCall.getState();
   const [chatOpen, setChatOpen] = useState(true);
   const [devicesOpen, setDevicesOpen] = useState(false);
+  const devicesBtn = useRef<HTMLButtonElement>(null);
   // Right-click volume menu (T3): { cursor position, whose audio }.
   const [menu, setMenu] = useState<{ x: number; y: number; participant: Participant } | null>(null);
   const openMenuAt = (x: number, y: number, participant: Participant) => setMenu({ x, y, participant });
@@ -172,11 +173,11 @@ export function CallStage({ target }: { target: CallTarget }) {
 
       {/* Control tray - Stack tokens (no white-on-dark blobs in dark mode). */}
       <div className="relative flex h-16 shrink-0 items-center justify-center gap-2 border-t border-line bg-paper px-4">
-        {devicesOpen && <DevicePicker onClose={() => setDevicesOpen(false)} />}
+        {devicesOpen && <DevicePicker anchor={devicesBtn.current} onClose={() => setDevicesOpen(false)} />}
         <CallButton label={mic ? "Mute microphone" : "Unmute microphone"} off={!mic} onClick={() => void toggleMic()}>
           {mic ? <Mic className="size-5" /> : <MicOff className="size-5" />}
         </CallButton>
-        <CallButton label="Audio & video devices" active={devicesOpen} onClick={() => setDevicesOpen((o) => !o)}>
+        <CallButton ref={devicesBtn} label="Audio & video devices" active={devicesOpen} onClick={() => setDevicesOpen((o) => !o)}>
           <Settings2 className="size-5" />
         </CallButton>
         <CallButton label={cam ? "Turn camera off" : "Turn camera on"} off={!cam} onClick={() => void toggleCam()}>
@@ -289,13 +290,7 @@ function ParticipantCard({
   );
 }
 
-function CallButton({
-  label,
-  off,
-  active,
-  onClick,
-  children,
-}: {
+const CallButton = forwardRef<HTMLButtonElement, {
   label: string;
   /** Device explicitly off (mic muted / cam off) - negative fill, Discord-style. */
   off?: boolean;
@@ -303,10 +298,11 @@ function CallButton({
   active?: boolean;
   onClick: () => void;
   children: ReactNode;
-}) {
+}>(function CallButton({ label, off, active, onClick, children }, ref) {
   return (
     <Tooltip label={label}>
       <button
+        ref={ref}
         onClick={onClick}
         aria-label={label}
         aria-pressed={off === undefined ? active : !off}
@@ -319,4 +315,4 @@ function CallButton({
       </button>
     </Tooltip>
   );
-}
+});
