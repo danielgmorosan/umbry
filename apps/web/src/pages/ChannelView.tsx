@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useSearchParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, Link, Navigate } from "react-router-dom";
 import { Hash, Lock, Phone, Sparkles, Users, ShieldAlert, Circle, MessageSquareReply, Pencil } from "lucide-react";
 import { PaneHeader, HeaderIconButton } from "@/components/chat/PaneHeader";
 import { Composer } from "@/components/chat/Composer";
@@ -176,6 +176,13 @@ export function ChannelView() {
 
   const name = channel?.name ?? "channel";
   const isPrivate = channel?.type === "private";
+
+  // Live call in this channel → the call page IS this channel (full chat
+  // under the stage), so keep the call on screen (T3). Skipped when this
+  // component is already embedded in the call page itself.
+  if (inThisCall && !location.pathname.includes("/call/")) {
+    return <Navigate to={`/w/${workspaceId}/call/${channelId}`} replace />;
+  }
 
   // T3: password-protected private channel you're not in — show the door.
   if (channel?.locked) {

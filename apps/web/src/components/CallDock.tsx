@@ -1,22 +1,28 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff } from "lucide-react";
 import { Tooltip } from "@gossip/ui/stack";
-import { RoomContext, RoomAudioRenderer } from "@livekit/components-react";
+import {
+  RoomContext,
+  RoomAudioRenderer,
+  VideoTrack,
+  isTrackReference,
+  useTracks,
+  useParticipants,
+} from "@livekit/components-react";
+import { Track } from "livekit-client";
 import { useCall, callPath } from "@/stores/useCall";
+import { UserAvatar } from "@/components/UserAvatar";
 import { router } from "@/app/router";
-import { cn } from "@/lib/utils";
+import { cn, truncateHandle } from "@/lib/utils";
 
 /**
- * Persistent call presence (T-14). Mounted OUTSIDE the router (in main.tsx),
- * so it survives every navigation, and — key — keeps a RoomAudioRenderer
- * mounted so remote audio keeps playing on every route. On the call page
- * itself the renderer is skipped (CallStage has its own; double renderers
- * would double the audio).
+ * Persistent call presence (T-14/T3). Mounted OUTSIDE the router (main.tsx),
+ * so it survives every navigation, and keeps a RoomAudioRenderer mounted so
+ * remote audio keeps playing on every route.
  *
- * The visible controls live in the sidebar (CallSidebarPanel, Discord-style)
- * so nothing floats over the UI. The floating pill only appears on routes
- * with no sidebar to host the panel (settings, dev pages) — the leave button
- * must never be more than one glance away during a call.
+ * While a call is live and you're anywhere but the call page, a draggable
+ * mini-call window stays on screen: live video (screenshare > camera >
+ * avatars), controls, click-to-return. The call is never invisible.
  */
 export function CallDock() {
   const room = useCall((s) => s.room);
@@ -30,55 +36,126 @@ export function CallDock() {
   const [path, setPath] = useState(router.state.location.pathname);
   useEffect(() => router.subscribe((s) => setPath(s.location.pathname)), []);
 
+  // Draggable position (null → default bottom-right corner).
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const grip = useRef<{ dx: number; dy: number } | null>(null);
+  const startDrag = (e: React.PointerEvent) => {
+    const card = (e.currentTarget as HTMLElement).closest("[data-minicall]") as HTMLElement | null;
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    grip.current = { dx: e.clientX - rect.left, dy: e.clientY - rect.top };
+    const move = (ev: PointerEvent) => {
+      if (!grip.current) return;
+      setPos({
+        x: Math.min(Math.max(8, ev.clientX - grip.current.dx), window.innerWidth - rect.width - 8),
+        y: Math.min(Math.max(8, ev.clientY - grip.current.dy), window.innerHeight - 96),
+      });
+    };
+    const up = () => {
+      grip.current = null;
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
   if (status === "idle" || !room || !target) return null;
   const onCallPage = path === callPath(target);
-  if (onCallPage) return null;
-
-  // /home and /w/… render a sidebar that hosts CallSidebarPanel.
-  const sidebarHosted = path.startsWith("/home") || path.startsWith("/w/");
 
   return (
     <RoomContext.Provider value={room}>
       {/* Remote audio keeps playing on every route. */}
       <RoomAudioRenderer />
-      {!sidebarHosted && (
-        <div className="fixed bottom-4 left-4 z-50 flex items-center gap-1 rounded-card border border-line bg-paper p-1.5 font-stack shadow-[var(--st-shadow-card)]">
-          <button
-            onClick={() => void router.navigate(callPath(target))}
-            title="Return to call"
-            className="mr-0.5 flex min-w-0 items-center gap-2 rounded-control px-2 py-1 text-left transition-colors hover:bg-field"
+      {!onCallPage && (
+        <div
+          data-minicall
+          className="fixed z-50 w-72 max-w-[calc(100vw-16px)] overflow-hidden rounded-card border border-line bg-paper font-stack shadow-[var(--st-shadow-card)]"
+          style={pos ? { left: pos.x, top: pos.y } : { right: 16, bottom: 16 }}
+        >
+          {/* Drag handle + return-to-call */}
+          <div
+            onPointerDown={startDrag}
+            className="flex cursor-grab select-none items-center gap-2 px-3 py-2 active:cursor-grabbing"
           >
             <LiveDot />
-            <span className="min-w-0">
-              <span className="block max-w-[140px] truncate text-[12.5px] font-semibold text-ink">
+            <button
+              onClick={() => void router.navigate(callPath(target))}
+              title="Return to call"
+              className="min-w-0 flex-1 text-left"
+            >
+              <span className="block truncate text-[12.5px] font-semibold text-ink">
                 {target.kind === "channel" ? `#${target.label}` : target.label}
               </span>
               <span className="block text-[10.5px] text-ink-faint">
-                {status === "connected" ? "in call, click to return" : "connecting…"}
+                {status === "connected" ? "in call · click to return" : "connecting…"}
               </span>
-            </span>
-          </button>
-          <DockBtn label={mic ? "Mute mic" : "Unmute mic"} active={mic} onClick={() => void toggleMic()}>
-            {mic ? <Mic className="size-4" /> : <MicOff className="size-4" />}
-          </DockBtn>
-          <DockBtn label={cam ? "Turn camera off" : "Turn camera on"} active={cam} onClick={() => void toggleCam()}>
-            {cam ? <Video className="size-4" /> : <VideoOff className="size-4" />}
-          </DockBtn>
-          <DockBtn label={screen ? "Stop sharing" : "Share screen"} active={screen} onClick={() => void toggleScreen()}>
-            <MonitorUp className="size-4" />
-          </DockBtn>
-          <Tooltip label="Leave call">
-            <button
-              onClick={() => void leave()}
-              aria-label="Leave call"
-              className="grid size-8 place-items-center rounded-control bg-negative text-white transition-opacity hover:opacity-90"
-            >
-              <PhoneOff className="size-4" />
             </button>
-          </Tooltip>
+          </div>
+          {/* Live picture — click returns to the call */}
+          <button
+            onClick={() => void router.navigate(callPath(target))}
+            title="Return to call"
+            className="block aspect-video w-full bg-[#101014]"
+          >
+            <MiniStage />
+          </button>
+          <div className="flex items-center justify-center gap-1 p-1.5">
+            <DockBtn label={mic ? "Mute mic" : "Unmute mic"} active={mic} onClick={() => void toggleMic()}>
+              {mic ? <Mic className="size-4" /> : <MicOff className="size-4" />}
+            </DockBtn>
+            <DockBtn label={cam ? "Turn camera off" : "Turn camera on"} active={cam} onClick={() => void toggleCam()}>
+              {cam ? <Video className="size-4" /> : <VideoOff className="size-4" />}
+            </DockBtn>
+            <DockBtn label={screen ? "Stop sharing" : "Share screen"} active={screen} onClick={() => void toggleScreen()}>
+              <MonitorUp className="size-4" />
+            </DockBtn>
+            <Tooltip label="Leave call">
+              <button
+                onClick={() => void leave()}
+                aria-label="Leave call"
+                className="ml-1 grid h-8 w-11 place-items-center rounded-control bg-negative text-white transition-opacity hover:opacity-90"
+              >
+                <PhoneOff className="size-4" />
+              </button>
+            </Tooltip>
+          </div>
         </div>
       )}
     </RoomContext.Provider>
+  );
+}
+
+/** Mini live view: screenshare first, then any live camera, else avatars. */
+function MiniStage() {
+  const tracks = useTracks(
+    [
+      { source: Track.Source.Camera, withPlaceholder: false },
+      { source: Track.Source.ScreenShare, withPlaceholder: false },
+    ],
+    { onlySubscribed: false },
+  );
+  const refs = tracks.filter(isTrackReference);
+  const show =
+    refs.find((t) => t.source === Track.Source.ScreenShare) ??
+    refs.find((t) => t.source === Track.Source.Camera && !t.publication.isMuted);
+  const participants = useParticipants();
+
+  if (show) return <VideoTrack trackRef={show} className="h-full w-full object-cover" />;
+  return (
+    <div className="flex h-full items-center justify-center gap-2">
+      {participants.slice(0, 5).map((p) => {
+        const handle = p.identity.split("#")[0];
+        return (
+          <UserAvatar
+            key={p.identity}
+            name={p.name || truncateHandle(handle, 6, 3)}
+            id={handle}
+            className="!size-10 !rounded-full !text-[13px]"
+          />
+        );
+      })}
+    </div>
   );
 }
 
@@ -157,7 +234,7 @@ function DockBtn({
 }: {
   label: string;
   active?: boolean;
-  /** Stretch to fill a grid cell (sidebar panel) instead of the fixed pill size. */
+  /** Stretch to fill a grid cell (sidebar panel) instead of the fixed size. */
   wide?: boolean;
   onClick: () => void;
   children: ReactNode;
