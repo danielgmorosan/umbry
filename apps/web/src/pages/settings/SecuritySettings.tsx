@@ -38,9 +38,13 @@ export function SecuritySettings() {
     setBioBusy(true);
     setBioMsg(null);
     try {
-      await enrollBiometricVault(mnemonic, displayName);
+      const mode = await enrollBiometricVault(mnemonic, displayName);
       setBioEnrolled(true);
-      setBioMsg("Done — next unlock is one fingerprint/PIN away.");
+      setBioMsg(
+        mode === "prf"
+          ? "Done — hardware-bound (PRF). Next unlock is one fingerprint/PIN away."
+          : "Done — biometric-gated mode (this browser can't do PRF, but nothing is stored in plaintext). Next unlock is one fingerprint/PIN away.",
+      );
     } catch (e) {
       setBioMsg(e instanceof Error ? e.message : "Couldn't set up biometric unlock.");
     } finally {
