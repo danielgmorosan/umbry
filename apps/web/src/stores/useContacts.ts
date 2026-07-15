@@ -2,6 +2,41 @@ import { useEffect } from "react";
 import { create } from "zustand";
 import { gossipSdk, SdkEventType, type Contact } from "@/lib/sdk";
 import { useSession } from "./useSession";
+import { truncateHandle } from "@/lib/utils";
+
+/** The SDK auto-names incoming discussion requests "New Request N". */
+const PLACEHOLDER_NAME = /^new request\s*\d*$/i;
+
+/**
+ * Incoming requests arrive with the SDK's placeholder name (T3). Upgrade
+ * them: rename to the sender's workspace display name when we know it
+ * (persisted via the SDK), and never *show* a placeholder — fall back to the
+ * truncated handle.
+ */
+async function upgradePlaceholderNames(list: Contact[]): Promise<boolean> {
+  const { useRelay } = await import("./useRelay"); // lazy: avoids an import cycle
+  const members = useRelay.getState().workspace?.members ?? [];
+  let renamed = false;
+  for (const c of list) {
+    if (!PLACEHOLDER_NAME.test((c.name ?? "").trim())) continue;
+    const member = members.find((m) => m.userId === c.userId);
+    if (!member?.name) continue;
+    try {
+      await gossipSdk.contacts.updateName(c.userId, member.name);
+      renamed = true;
+    } catch (e) {
+      console.error("contact rename failed", e);
+    }
+  }
+  return renamed;
+}
+
+/** Placeholder names never reach the UI — show the handle instead. */
+function displayable(list: Contact[]): Contact[] {
+  return list.map((c) =>
+    PLACEHOLDER_NAME.test((c.name ?? "").trim()) ? { ...c, name: truncateHandle(c.userId, 10, 4) } : c,
+  );
+}
 
 interface ContactsState {
   contacts: Contact[];
@@ -23,7 +58,10 @@ export const useContacts = create<ContactsState>((set, get) => ({
     }
     set({ loading: true });
     try {
-      set({ contacts: await gossipSdk.contacts.list() });
+      let list = await gossipSdk.contacts.list();
+      // Rename "New Request N" contacts to their workspace display name.
+      if (await upgradePlaceholderNames(list)) list = await gossipSdk.contacts.list();
+      set({ contacts: displayable(list) });
     } catch (e) {
       console.error("contacts.list failed", e);
     } finally {
@@ -70,6 +108,22 @@ export function useContactsLive() {
   useEffect(() => {
     if (sessionStatus !== "open") return;
     refresh();
-    return useContacts.getState().subscribe();
+    // Workspace membership arriving later can resolve placeholder contact
+    // names — re-run the refresh (and its rename pass) when members change.
+    let unsubRelay: (() => void) | undefined;
+    void import("./useRelay").then(({ useRelay }) => {
+      let lastKey = "";
+      unsubRelay = useRelay.subscribe((s) => {
+        const key = `${s.workspace?.id ?? ""}:${s.workspace?.members.length ?? 0}`;
+        if (key === lastKey) return;
+        lastKey = key;
+        if (s.workspace) void refresh();
+      });
+    });
+    const unsubSdk = useContacts.getState().subscribe();
+    return () => {
+      unsubSdk();
+      unsubRelay?.();
+    };
   }, [sessionStatus, refresh]);
 }
