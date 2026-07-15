@@ -241,6 +241,10 @@ export const useRelay = create<RelayState>((set, get) => ({
     ws.onopen = () => {
       set({ conn: "open" });
       sendHello();
+      // Auto-heal: if we have a real display name, re-announce it as an explicit
+      // profile update so the relay's member record can't stay stuck on an old
+      // "user-xxxx" fallback from a hello sent before the name was set.
+      if (useSession.getState().displayName) sendHello(false, true);
       // re-subscribe channels after a reconnect
       const cur = get();
       if (cur.workspace) ws?.send(JSON.stringify({ type: "openWorkspace", workspaceId: cur.workspace.id }));

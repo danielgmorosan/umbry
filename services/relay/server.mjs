@@ -428,6 +428,22 @@ function lockedChannelStub(ch) {
  * for their members — except password-protected ones (T3), which appear as
  * locked stubs so anyone with the password can find the door.
  */
+// Sender names are baked into each stored message at post time, so a member
+// who later fixes their display name would still show the old name on their
+// past messages. Re-derive senderName from the CURRENT member record when
+// serving history: the member record is the source of truth, so correcting a
+// name (or an avatar) retroactively repairs every message that member sent.
+function withCurrentSenders(workspace, msgs) {
+  const members = workspace?.members ?? {};
+  return msgs.map((msg) => {
+    const member = members[msg.senderId];
+    if (!member) return msg;
+    const name = member.name && member.name !== msg.senderName ? member.name : msg.senderName;
+    if (name === msg.senderName) return msg;
+    return { ...msg, senderName: name };
+  });
+}
+
 function serializeWorkspace(ws, forUserId) {
   return {
     id: ws.id,
@@ -1186,7 +1202,7 @@ wss.on("connection", (ws) => {
         }
         const chKey = `${m.workspaceId}/${m.channelId}`;
         client.chSubs.add(chKey);
-        send(ws, { type: "history", workspaceId: m.workspaceId, channelId: m.channelId, messages: db.messages[chKey] ?? [] });
+        send(ws, { type: "history", workspaceId: m.workspaceId, channelId: m.channelId, messages: withCurrentSenders(db.workspaces[m.workspaceId], db.messages[chKey] ?? []) });
         presence(m.workspaceId, m.channelId);
         break;
       }
