@@ -11,7 +11,6 @@ import {
   Search,
   Copy,
   Check,
-  Phone,
 } from "lucide-react";
 import { NavBadge, Tooltip } from "@gossip/ui/stack";
 import { cn } from "@/lib/utils";
@@ -27,6 +26,7 @@ import { useUnlockPrompt } from "@/components/UnlockDialog";
 import type { RelayChannel } from "@/stores/useRelay";
 import { Trash2, Users as UsersIcon } from "lucide-react";
 import { longPressProps } from "@/lib/longPress";
+import { LiveBars } from "@/components/LiveIndicators";
 
 /** NavLink styled like the Stack kit's NavItem (kept as a real link for router semantics). */
 export function Row({
@@ -94,18 +94,15 @@ export function GroupLabel({
   );
 }
 
-/** Green pulsing phone on channels with a live huddle (T3). */
+/** Live-audio bars on channels with a live huddle (T3). */
 function ChannelCallBadge({ channelId }: { channelId: string }) {
   const call = useRelay((s) => s.activeCallByChannel[channelId]);
   if (!call) return null;
   return (
-    <span
-      title={`Huddle in progress · ${call.count} ${call.count === 1 ? "person" : "people"}`}
-      className="relative grid size-4 shrink-0 place-items-center text-positive"
-    >
-      <Phone className="size-3.5" />
-      <span className="absolute -right-0.5 -top-0.5 size-1.5 animate-ping rounded-full bg-positive opacity-75" />
-    </span>
+    <LiveBars
+      className="h-3.5"
+      aria-label={`Huddle in progress · ${call.count} ${call.count === 1 ? "person" : "people"}`}
+    />
   );
 }
 

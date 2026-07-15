@@ -12,6 +12,7 @@ import {
 import { Track } from "livekit-client";
 import { useCall, callPath } from "@/stores/useCall";
 import { UserAvatar } from "@/components/UserAvatar";
+import { LiveBars } from "@/components/LiveIndicators";
 import { router } from "@/app/router";
 import { cn, truncateHandle } from "@/lib/utils";
 
@@ -96,7 +97,7 @@ export function CallDock() {
             onPointerDown={startDrag}
             className="flex cursor-grab select-none items-center gap-2 px-3 py-2 active:cursor-grabbing"
           >
-            <LiveDot />
+            <LiveBars />
             <button
               onClick={() => void router.navigate(callPath(target))}
               title="Return to call"
@@ -200,7 +201,7 @@ export function CallSidebarPanel() {
         title="Return to call"
         className="flex w-full min-w-0 items-center gap-2 rounded-control px-2 py-1 text-left transition-colors hover:bg-field"
       >
-        <LiveDot />
+        <LiveBars />
         <span className="min-w-0">
           <span className="block truncate text-[12.5px] font-semibold text-ink">
             {target.kind === "channel" ? `#${target.label}` : target.label}
@@ -231,15 +232,6 @@ export function CallSidebarPanel() {
         </Tooltip>
       </div>
     </div>
-  );
-}
-
-function LiveDot() {
-  return (
-    <span className="relative flex size-2.5 shrink-0">
-      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-positive opacity-60" />
-      <span className="relative inline-flex size-2.5 rounded-full bg-positive" />
-    </span>
   );
 }
 

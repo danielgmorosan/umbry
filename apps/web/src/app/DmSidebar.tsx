@@ -9,6 +9,7 @@ import { useNotifications } from "@/stores/useNotifications";
 import { NewDmDialog } from "@/components/chat/NewDmDialog";
 import { CallSidebarPanel } from "@/components/CallDock";
 import { useUnlockPrompt } from "@/components/UnlockDialog";
+import { BreathingDot } from "@/components/LiveIndicators";
 import { Row, GroupLabel } from "./ChannelSidebar";
 
 /** Unread pill for a DM row (T2-09). */
@@ -44,7 +45,7 @@ export function DmSidebar() {
           <div className="mt-0.5 text-[10px] text-ink-faint">personal space, no workspace needed</div>
         </div>
         <span className="inline-flex shrink-0 items-center gap-1 rounded-control bg-field px-2 py-0.5 text-[11px] font-medium text-positive">
-          <span className="size-1.5 rounded-full bg-positive" /> E2E
+          <BreathingDot /> E2E
         </span>
       </div>
 

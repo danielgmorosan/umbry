@@ -48,6 +48,8 @@ interface CallState {
   lastDisconnectReason: DisconnectReason | null;
 
   connect: (args: { url: string; token: string; target: CallTarget; options: RoomOptions }) => Promise<void>;
+  /** Refresh the display label once the channel/contact name resolves (T3). */
+  setTargetLabel: (label: string) => void;
   leave: () => Promise<void>;
   toggleMic: () => Promise<void>;
   toggleCam: () => Promise<void>;
@@ -137,6 +139,11 @@ export const useCall = create<CallState>((set, get) => {
         }
         throw e;
       }
+    },
+
+    setTargetLabel: (label) => {
+      const t = get().target;
+      if (t && label && t.label !== label) set({ target: { ...t, label } });
     },
 
     leave: async () => {

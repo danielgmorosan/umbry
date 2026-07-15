@@ -18,6 +18,7 @@ import { useRelay, type RelayChannel } from "@/stores/useRelay";
 import { useSession } from "@/stores/useSession";
 import { useUnlockPrompt } from "@/components/UnlockDialog";
 import { useFileDrop } from "@/lib/useFileDrop";
+import { LiveBars } from "@/components/LiveIndicators";
 import { useNotifications } from "@/stores/useNotifications";
 import { useCall } from "@/stores/useCall";
 import { formatTime } from "@/lib/utils";
@@ -289,10 +290,7 @@ export function ChannelView({ embedded }: { embedded?: boolean } = {}) {
         {/* Live huddle banner (T3) - Discord-style "call in progress" strip. */}
         {activeCall && !inThisCall && (
           <div className="flex shrink-0 items-center gap-2.5 border-b border-line bg-paper-2 px-4 py-2">
-            <span className="relative flex size-2.5 shrink-0">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-positive opacity-60" />
-              <span className="relative inline-flex size-2.5 rounded-full bg-positive" />
-            </span>
+            <LiveBars className="h-3.5" />
             <span className="min-w-0 truncate text-[13px] text-ink">
               <span className="font-semibold">Huddle in progress</span>
               <span className="text-ink-mute">

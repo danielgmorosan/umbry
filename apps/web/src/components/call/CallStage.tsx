@@ -235,9 +235,10 @@ function ParticipantCard({
       {...(onMenuAt ? longPressProps((x, y) => onMenuAt(x, y, p)) : {})}
       title="Right-click (or hold) for volume"
       className={cn(
-        "relative aspect-video shrink-0 overflow-hidden rounded-card bg-[#1b1c22]",
+        "relative aspect-video shrink-0 overflow-hidden rounded-card bg-[#1b1c22] transition-shadow duration-200",
         large ? "w-[300px]" : "w-[216px]",
-        speaking && "ring-2 ring-positive",
+        // Speaking: green ring + a soft audio glow (nicer than the bare ring).
+        speaking && "ring-2 ring-positive shadow-[0_0_18px_-2px_var(--st-positive)]",
       )}
     >
       {isTrackReference(trackRef) && !camMuted ? (

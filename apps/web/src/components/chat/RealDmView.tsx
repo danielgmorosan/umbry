@@ -19,6 +19,7 @@ import { useSession } from "@/stores/useSession";
 import { useUnlockPrompt } from "@/components/UnlockDialog";
 import { useLightbox } from "@/components/ImageLightbox";
 import { UserProfileDialog } from "@/components/UserProfileDialog";
+import { LiveBars, BreathingDot } from "@/components/LiveIndicators";
 import { useFileDrop } from "@/lib/useFileDrop";
 import { useContacts } from "@/stores/useContacts";
 import { useNotifications } from "@/stores/useNotifications";
@@ -27,7 +28,7 @@ import { cn, formatTime, truncateHandle } from "@/lib/utils";
 function E2EPill() {
   return (
     <span className="ml-1 inline-flex items-center gap-1 rounded-control bg-field px-2 py-0.5 text-[11px] font-medium text-positive">
-      <span className="size-1.5 rounded-full bg-positive" /> live · E2E
+      <BreathingDot /> live · E2E
     </span>
   );
 }
@@ -255,10 +256,7 @@ export function RealDmView({ peerId, peerName, embedded }: { peerId: string; pee
 
       {liveCallCount > 0 && !inThisCall && (
         <div className="flex shrink-0 items-center gap-2.5 border-b border-line bg-paper-2 px-4 py-2">
-          <span className="relative flex size-2.5 shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-positive opacity-60" />
-            <span className="relative inline-flex size-2.5 rounded-full bg-positive" />
-          </span>
+          <LiveBars className="h-3.5" />
           <span className="min-w-0 truncate text-[13px] text-ink">
             <span className="font-semibold">Call in progress</span>
             <span className="text-ink-mute"> · {liveCallCount} {liveCallCount === 1 ? "person" : "people"} · E2E</span>

@@ -71,6 +71,13 @@ export function CallPage() {
     [isDm, workspaceId, channelId, peerId, peerName, channel?.name],
   );
 
+  // The call may have started before the channel/contact name loaded (label
+  // froze as the raw id) - refresh the stored label once it resolves so the
+  // header, dock, and sidebar stop showing "#ch_…".
+  useEffect(() => {
+    if (sameTarget(useCall.getState().target, target)) useCall.getState().setTargetLabel(target.label);
+  }, [target]);
+
   // Persisted audio prefs (Settings → Calls & audio) → LiveKit room options.
   const audio = useAudioSettings();
   const roomOptions = useMemo<RoomOptions>(
