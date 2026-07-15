@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from "react";
-import { Track } from "livekit-client";
+import { useEffect, useState, type ReactNode } from "react";
+import { Track, RemoteParticipant, type Participant } from "livekit-client";
 import {
   RoomAudioRenderer,
   VideoTrack,
@@ -15,6 +15,8 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { useCall, type CallTarget } from "@/stores/useCall";
 import { ChannelView } from "@/pages/ChannelView";
 import { RealDmView } from "@/components/chat/RealDmView";
+import { ParticipantMenu } from "./ParticipantMenu";
+import { useCallVolumes } from "@/stores/useCallVolumes";
 import { cn, truncateHandle } from "@/lib/utils";
 
 /**
@@ -32,6 +34,12 @@ export function CallStage({ target }: { target: CallTarget }) {
   const screen = useCall((s) => s.screen);
   const { toggleMic, toggleCam, toggleScreen, leave } = useCall.getState();
   const [chatOpen, setChatOpen] = useState(true);
+  // Right-click volume menu (T3): { cursor position, whose audio }.
+  const [menu, setMenu] = useState<{ x: number; y: number; participant: Participant } | null>(null);
+  const openMenu = (e: React.MouseEvent, participant: Participant) => {
+    e.preventDefault();
+    setMenu({ x: e.clientX, y: e.clientY, participant });
+  };
 
   const tracks = useTracks(
     [
@@ -52,16 +60,22 @@ export function CallStage({ target }: { target: CallTarget }) {
 
       <div className={cn("flex min-h-0 flex-col bg-[#101014]", chatOpen ? "shrink-0" : "flex-1 justify-center")}>
         {screenShare && (
-          <div className={cn("min-h-0 p-3 pb-0", chatOpen ? "h-[38vh]" : "min-h-[38vh] flex-1")}>
+          <div
+            className={cn("min-h-0 p-3 pb-0", chatOpen ? "h-[38vh]" : "min-h-[38vh] flex-1")}
+            onContextMenu={(e) => openMenu(e, screenShare.participant)}
+            title="Right-click for volume"
+          >
             <VideoTrack trackRef={screenShare} className="h-full w-full rounded-card object-contain" />
           </div>
         )}
         <div className="flex max-h-[38vh] shrink-0 flex-wrap items-center justify-center gap-2 overflow-y-auto px-4 py-3">
           {cameras.map((t) => (
-            <ParticipantCard key={`${t.participant.identity}:${t.source}`} trackRef={t} large={large} />
+            <ParticipantCard key={`${t.participant.identity}:${t.source}`} trackRef={t} large={large} onMenu={openMenu} />
           ))}
         </div>
       </div>
+
+      {menu && <ParticipantMenu x={menu.x} y={menu.y} participant={menu.participant} onClose={() => setMenu(null)} />}
 
       {/* Control tray — Stack tokens (no white-on-dark blobs in dark mode). */}
       <div className="flex h-16 shrink-0 items-center justify-center gap-2 border-t border-line bg-paper px-4">
@@ -109,8 +123,17 @@ export function CallStage({ target }: { target: CallTarget }) {
  * Fixed-size 16:9 participant tile. Camera on fills the tile with video;
  * camera off shows a small circular avatar — never a tile-sized silhouette.
  * Speaking gets the green ring; a muted mic is flagged in the name chip.
+ * Right-click opens the per-user volume menu (T3).
  */
-function ParticipantCard({ trackRef, large }: { trackRef: TrackReferenceOrPlaceholder; large: boolean }) {
+function ParticipantCard({
+  trackRef,
+  large,
+  onMenu,
+}: {
+  trackRef: TrackReferenceOrPlaceholder;
+  large: boolean;
+  onMenu?: (e: React.MouseEvent, participant: Participant) => void;
+}) {
   const p = trackRef.participant;
   const speaking = useIsSpeaking(p);
   const micMuted = useIsMuted({ participant: p, source: Track.Source.Microphone });
@@ -120,8 +143,20 @@ function ParticipantCard({ trackRef, large }: { trackRef: TrackReferenceOrPlaceh
   const handle = p.identity.split("#")[0];
   const name = p.name || truncateHandle(handle, 8, 4);
 
+  // Apply this listener's saved volume prefs for this person (T3) — voice and
+  // screenshare audio. Re-applied when prefs change or their tracks appear.
+  const vol = useCallVolumes((s) => s.volumes[handle]);
+  const sharingAudio = !!p.getTrackPublication(Track.Source.ScreenShareAudio);
+  useEffect(() => {
+    if (!(p instanceof RemoteParticipant)) return;
+    p.setVolume(vol?.mic ?? 1);
+    if (sharingAudio) p.setVolume(vol?.screen ?? 1, Track.Source.ScreenShareAudio);
+  }, [p, vol, sharingAudio]);
+
   return (
     <div
+      onContextMenu={(e) => onMenu?.(e, p)}
+      title="Right-click for volume"
       className={cn(
         "relative aspect-video shrink-0 overflow-hidden rounded-card bg-[#1b1c22]",
         large ? "w-[300px]" : "w-[216px]",
