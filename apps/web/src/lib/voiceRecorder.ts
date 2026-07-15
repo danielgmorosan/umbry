@@ -20,6 +20,11 @@ export class VoiceRecorder {
   private chunks: BlobPart[] = [];
   private startedAt = 0;
 
+  /** The live capture stream (for a recording waveform), or null before start. */
+  getStream(): MediaStream | null {
+    return this.stream;
+  }
+
   async start(): Promise<void> {
     this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const mimeType = pickMime();

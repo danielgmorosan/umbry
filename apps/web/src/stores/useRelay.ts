@@ -188,7 +188,7 @@ function wsUrl() {
   return relayWsUrl("/group-ws");
 }
 
-function sendHello(clearAvatar = false) {
+function sendHello(clearAvatar = false, profileUpdate = false) {
   if (!ws || ws.readyState !== WebSocket.OPEN) return; // onopen will send hello once connected
   const s = useSession.getState();
   const name = s.displayName || (s.userId ? `user-${s.userId.slice(7, 11)}` : "Someone");
@@ -202,7 +202,11 @@ function sendHello(clearAvatar = false) {
     if (o?.kind === "image" && o.dataUrl.length <= 65536) avatar = o.dataUrl;
   }
   const status = useStatus.getState().status; // "online" | "invisible" (T3)
-  ws.send(JSON.stringify({ type: "hello", userId: s.userId, name, status, ...(avatar !== undefined ? { avatar } : {}) }));
+  // profileUpdate=true (only from syncProfile after a real Settings change,
+  // and only when a display name is actually set) lets the relay update the
+  // registered member name. A routine hello never does.
+  const explicit = profileUpdate && !!s.displayName;
+  ws.send(JSON.stringify({ type: "hello", userId: s.userId, name, status, ...(explicit ? { profileUpdate: true } : {}), ...(avatar !== undefined ? { avatar } : {}) }));
 }
 
 function request<T extends RelayMsg>(payload: object): Promise<T> {
@@ -557,9 +561,10 @@ export const useRelay = create<RelayState>((set, get) => ({
 
   syncProfile: () => {
     // The socket may still be connecting right after unlock - retry briefly
-    // so the profile announcement isn't silently dropped.
+    // so the profile announcement isn't silently dropped. profileUpdate=true
+    // so the relay actually applies the (real) name/avatar.
     const attempt = (left: number) => {
-      if (ws && ws.readyState === WebSocket.OPEN) sendHello();
+      if (ws && ws.readyState === WebSocket.OPEN) sendHello(false, true);
       else if (left > 0) setTimeout(() => attempt(left - 1), 500);
     };
     attempt(10);

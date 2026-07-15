@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Plus, WandSparkles, X, Mic, Square, Trash2 } from "lucide-react";
 import { VoiceRecorder, formatDuration } from "@/lib/voiceRecorder";
+import { RecordingWaveform } from "./RecordingWaveform";
 import { StackToast, Tooltip } from "@gossip/ui/stack";
 import { cn } from "@/lib/utils";
 import { openclaw } from "@/lib/openclaw";
@@ -217,6 +218,7 @@ export function Composer({
   const voiceSupported = !!onAttach && !e2e && typeof MediaRecorder !== "undefined";
   const recorderRef = useRef<VoiceRecorder | null>(null);
   const [recording, setRecording] = useState(false);
+  const [recStream, setRecStream] = useState<MediaStream | null>(null);
   const [recMs, setRecMs] = useState(0);
   const recTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -225,6 +227,7 @@ export function Composer({
       const r = new VoiceRecorder();
       await r.start();
       recorderRef.current = r;
+      setRecStream(r.getStream());
       setRecording(true);
       setRecMs(0);
       const t0 = Date.now();
@@ -238,6 +241,7 @@ export function Composer({
     const r = recorderRef.current;
     recorderRef.current = null;
     setRecording(false);
+    setRecStream(null);
     if (!r) return;
     if (!send) {
       r.cancel();
@@ -476,29 +480,32 @@ export function Composer({
           </div>
         )}
         {recording && (
-          <div className="flex items-center gap-3 px-3.5 py-3">
-            <span className="flex items-center gap-2 text-[13px] font-medium text-negative">
-              <span className="size-2.5 animate-pulse rounded-full bg-negative" />
-              Recording {formatDuration(recMs)}
+          <div className="flex items-center gap-3 px-3 py-2.5">
+            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-negative/10 px-2.5 py-1 text-[12px] font-semibold text-negative">
+              <span className="size-2 animate-pulse rounded-full bg-negative" />
+              REC
             </span>
-            <span className="text-[12px] text-ink-faint">Stop to attach, then Send</span>
-            <div className="ml-auto flex items-center gap-1.5">
-              <Tooltip label="Discard">
-                <button
-                  onClick={() => void stopRecordingAnd(false)}
-                  aria-label="Discard recording"
-                  className="grid size-9 place-items-center rounded-control text-ink-mute transition-colors hover:bg-field hover:text-ink"
-                >
-                  <Trash2 className="size-4" />
-                </button>
-              </Tooltip>
+            {/* Live mic waveform (T3) - the accent trace reacts to your voice. */}
+            <RecordingWaveform stream={recStream} className="h-9 min-w-0 flex-1" />
+            <span className="shrink-0 font-mono text-[12px] tabular-nums text-ink-mute">{formatDuration(recMs)}</span>
+            <Tooltip label="Discard">
+              <button
+                onClick={() => void stopRecordingAnd(false)}
+                aria-label="Discard recording"
+                className="grid size-9 shrink-0 place-items-center rounded-full text-ink-mute transition-colors hover:bg-field hover:text-negative"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            </Tooltip>
+            <Tooltip label="Stop &amp; attach">
               <button
                 onClick={() => void stopRecordingAnd(true)}
-                className="inline-flex items-center gap-1.5 rounded-control bg-ink px-3 py-2 text-[13px] font-medium text-paper transition-colors hover:bg-ink-hover"
+                aria-label="Stop and attach"
+                className="grid size-9 shrink-0 place-items-center rounded-full bg-positive text-white transition-transform hover:scale-105 active:scale-95"
               >
-                <Square className="size-3.5 fill-current" /> Stop
+                <Square className="size-3.5 fill-current" />
               </button>
-            </div>
+            </Tooltip>
           </div>
         )}
         <textarea

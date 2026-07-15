@@ -860,6 +860,13 @@ wss.on("connection", (ws) => {
       case "hello": {
         client.userId = String(m.userId ?? "").slice(0, 80) || `anon-${randomUUID().slice(0, 6)}`;
         client.name = String(m.name ?? "Someone").slice(0, 40);
+        // Prefer this user's REGISTERED member name over a per-connection
+        // hello name. A device with an empty local display name sends a
+        // "user-xxxx" fallback; that must never become the name others see
+        // (or the sender name on messages). The member record - set when they
+        // joined or explicitly changed their profile - is the source of truth.
+        const registered = Object.values(db.workspaces).find((w) => w.members?.[client.userId])?.members[client.userId]?.name;
+        if (registered) client.name = registered;
         // T3: invisible status rides on hello (persisted client-side).
         if (m.status === "invisible" || m.status === "online") setInvisible(client.userId, m.status === "invisible");
         markOnline(client); // T3: presence
@@ -882,14 +889,19 @@ wss.on("connection", (ws) => {
         // Propagate profile changes (name and/or avatar) onto this user's
         // member record in every workspace — a rename in Settings should
         // show to everyone, not only in workspaces joined afterwards (T3).
+        // Only an EXPLICIT profile update (Settings → Save) may change the
+        // registered name - never a routine hello (typing, presence, reconnect),
+        // which would let a fallback name clobber the real one.
+        const nameUpdate = m.profileUpdate === true ? String(m.name ?? "").slice(0, 40) : null;
         if (!isAnon(client.userId)) {
           let changed = false;
           for (const workspace of Object.values(db.workspaces)) {
             const member = workspace.members[client.userId];
             if (!member) continue;
             let memberChanged = false;
-            if (client.name && member.name !== client.name) {
-              member.name = client.name;
+            if (nameUpdate && member.name !== nameUpdate) {
+              member.name = nameUpdate;
+              client.name = nameUpdate;
               memberChanged = true;
             }
             if (avatar !== undefined && (member.avatar ?? null) !== avatar) {
