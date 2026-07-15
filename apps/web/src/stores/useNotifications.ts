@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { playChime, playCallChime } from "@/lib/sounds";
 
 /**
  * In-app notification layer (T2-09).
@@ -42,7 +43,7 @@ const defaultPrefs: NotifPrefs = {
   mutedChannels: [],
   mutedDms: [],
   os: false,
-  sound: false,
+  sound: true,
 };
 function loadPrefs(): NotifPrefs {
   try {
@@ -54,24 +55,26 @@ function loadPrefs(): NotifPrefs {
 
 const INBOX_CAP = 100;
 
-/** Short beep via WebAudio — no asset, no network. */
-function beep() {
+/**
+ * OS-level notification. Android (and installed PWAs generally) reject the
+ * `new Notification()` constructor — the service-worker registration's
+ * showNotification is the only path that works there, so prefer it.
+ */
+export async function showOsNotification(title: string, body: string, link: string, tag?: string) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
   try {
-    const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctor) return;
-    const ctx = new Ctor();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.value = 660;
-    gain.gain.setValueAtTime(0.08, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.2);
-    osc.onended = () => void ctx.close();
+    const reg = await navigator.serviceWorker?.getRegistration();
+    if (reg) {
+      await reg.showNotification(title, { body, tag, data: { link } });
+      return;
+    }
   } catch {
-    /* audio blocked — fine */
+    /* fall through to the constructor */
+  }
+  try {
+    new Notification(title, { body, tag, silent: true });
+  } catch {
+    /* blocked — in-app toast still shows */
   }
 }
 
@@ -138,14 +141,10 @@ export const useNotifications = create<NotificationsState>((set, get) => {
         unreadByDm: n.peerId ? { ...st.unreadByDm, [n.peerId]: (st.unreadByDm[n.peerId] ?? 0) + 1 } : st.unreadByDm,
       }));
 
-      if (prefs.sound) beep();
+      if (prefs.sound) (n.type === "call" ? playCallChime : playChime)();
       // OS notification only when the tab isn't visible (in-app toast covers the rest).
-      if (prefs.os && document.hidden && "Notification" in window && Notification.permission === "granted") {
-        try {
-          new Notification(item.title, { body: item.body, tag: item.id, silent: true });
-        } catch {
-          /* blocked — in-app toast still shows */
-        }
+      if (prefs.os && document.hidden) {
+        void showOsNotification(item.title, item.body, item.link, item.id);
       }
     },
 

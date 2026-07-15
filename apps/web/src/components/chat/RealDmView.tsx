@@ -4,11 +4,13 @@ import { ShieldCheck, Check, Lock, Phone } from "lucide-react";
 import { PaneHeader, HeaderIconButton } from "@/components/chat/PaneHeader";
 import { Composer } from "@/components/chat/Composer";
 import { MessageBody } from "@/components/chat/MessageBody";
+import { MessagePreviews } from "@/components/chat/LinkPreview";
 import { MessageActionsBar, ArmDeleteButton, EditBox } from "@/components/chat/MessageActionsBar";
 import { Pencil } from "lucide-react";
 import { Button, Tooltip } from "@gossip/ui/stack";
 import { UserAvatar as Avatar } from "@/components/UserAvatar";
 import { gossipSdk, SdkEventType, MessageDirection, MessageType, type Message } from "@/lib/sdk";
+import { parseCallSignal, callSignalLabel } from "@/lib/callSignals";
 import { useSession } from "@/stores/useSession";
 import { useContacts } from "@/stores/useContacts";
 import { useNotifications } from "@/stores/useNotifications";
@@ -186,6 +188,19 @@ export function RealDmView({ peerId, peerName }: { peerId: string; peerName?: st
           {messages.map((m, i) => {
             const mine = isSelf || m.direction === MessageDirection.OUTGOING;
             const deleted = m.type === MessageType.DELETED;
+            // T3: call markers render as event chips, never as chat bubbles.
+            const signal = !deleted ? parseCallSignal(m.content) : null;
+            if (signal) {
+              return (
+                <div key={m.id ?? i} className="flex justify-center py-1">
+                  <span className="inline-flex items-center gap-1.5 rounded-control bg-field px-2.5 py-1 text-[12px] text-ink-mute">
+                    <Phone className="size-3" />
+                    {callSignalLabel(signal, mine, peerName || truncateHandle(peerId, 8, 4))}
+                    <span className="text-ink-faint">· {formatTime(new Date(m.timestamp))}</span>
+                  </span>
+                </div>
+              );
+            }
             const attribution = mine ? "me" : (peerName || truncateHandle(peerId, 12, 6));
             // Edit/delete go through the gossip-sdk only (E2E control messages);
             // SDK enforces author-only. Not offered for Notes-to-Self (separate service).
@@ -223,26 +238,30 @@ export function RealDmView({ peerId, peerName }: { peerId: string; peerName?: st
               <div key={m.id ?? i} className={cn("group flex items-end gap-2", mine ? "justify-end" : "justify-start")}>
                 {!mine && <div className="w-7 shrink-0"><Avatar name={peerName || peerId} id={peerId} className="!size-7 !text-[11px]" /></div>}
                 {mine && actions}
-                <div
-                  className={cn(
-                    "relative max-w-[68%] px-3.5 py-2 text-[14px] leading-relaxed",
-                    mine ? "rounded-card rounded-br-md bg-ink text-paper" : "rounded-card rounded-bl-md bg-field text-ink",
-                  )}
-                >
-                  {deleted ? (
-                    <span className={cn("text-[13px] italic", mine ? "text-paper/60" : "text-ink-faint")}>message deleted</span>
-                  ) : (
-                    <>
-                      <MessageBody text={m.content} />
-                      {isEdited(m) && (
-                        <span className={cn("ml-1.5 text-[10.5px]", mine ? "text-paper/60" : "text-ink-faint")}>(edited)</span>
-                      )}
-                    </>
-                  )}
-                  <span className={cn("ml-2 inline-flex translate-y-0.5 items-center gap-0.5 text-[10px]", mine ? "text-paper/60" : "text-ink-faint")}>
-                    {formatTime(new Date(m.timestamp))}
-                    {mine && !deleted && <Check className="size-3" />}
-                  </span>
+                <div className={cn("flex max-w-[68%] min-w-0 flex-col", mine ? "items-end" : "items-start")}>
+                  <div
+                    className={cn(
+                      "relative px-3.5 py-2 text-[14px] leading-relaxed",
+                      mine ? "rounded-card rounded-br-md bg-ink text-paper" : "rounded-card rounded-bl-md bg-field text-ink",
+                    )}
+                  >
+                    {deleted ? (
+                      <span className={cn("text-[13px] italic", mine ? "text-paper/60" : "text-ink-faint")}>message deleted</span>
+                    ) : (
+                      <>
+                        <MessageBody text={m.content} />
+                        {isEdited(m) && (
+                          <span className={cn("ml-1.5 text-[10.5px]", mine ? "text-paper/60" : "text-ink-faint")}>(edited)</span>
+                        )}
+                      </>
+                    )}
+                    <span className={cn("ml-2 inline-flex translate-y-0.5 items-center gap-0.5 text-[10px]", mine ? "text-paper/60" : "text-ink-faint")}>
+                      {formatTime(new Date(m.timestamp))}
+                      {mine && !deleted && <Check className="size-3" />}
+                    </span>
+                  </div>
+                  {/* E2E: previews are YouTube-only and never touch the relay. */}
+                  {!deleted && <MessagePreviews text={m.content} e2e />}
                 </div>
                 {!mine && actions}
               </div>

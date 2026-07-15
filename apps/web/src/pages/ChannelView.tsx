@@ -4,6 +4,7 @@ import { Hash, Lock, Phone, Sparkles, Users, ShieldAlert, Circle, MessageSquareR
 import { PaneHeader, HeaderIconButton } from "@/components/chat/PaneHeader";
 import { Composer } from "@/components/chat/Composer";
 import { MessageBody } from "@/components/chat/MessageBody";
+import { MessagePreviews } from "@/components/chat/LinkPreview";
 import { MessageActionsBar, ArmDeleteButton, EditBox } from "@/components/chat/MessageActionsBar";
 import { AttachmentView } from "@/components/chat/AttachmentView";
 import { uploadAttachment } from "@/lib/uploads";
@@ -15,6 +16,7 @@ import { UserAvatar as Avatar } from "@/components/UserAvatar";
 import { useRelay } from "@/stores/useRelay";
 import { useSession } from "@/stores/useSession";
 import { useNotifications } from "@/stores/useNotifications";
+import { useCall } from "@/stores/useCall";
 import { formatTime } from "@/lib/utils";
 import { useStartDm } from "@/lib/useStartDm";
 
@@ -49,6 +51,10 @@ export function ChannelView() {
   const conn = useRelay((s) => s.conn);
   const messages = useRelay((s) => s.messagesByChannel[channelId]) ?? [];
   const presence = useRelay((s) => s.presenceByChannel[channelId]) ?? 0;
+  const activeCall = useRelay((s) => s.activeCallByChannel[channelId]);
+  const inThisCall = useCall(
+    (s) => s.status !== "idle" && s.target?.kind === "channel" && s.target.channelId === channelId,
+  );
   const myId = useSession((s) => s.userId);
   const myRole = workspace?.members.find((x) => x.userId === myId)?.role;
   const isAdmin = myRole === "owner" || myRole === "admin";
@@ -161,6 +167,29 @@ export function ChannelView() {
           }
         />
 
+        {/* Live huddle banner (T3) — Discord-style "call in progress" strip. */}
+        {activeCall && !inThisCall && (
+          <div className="flex shrink-0 items-center gap-2.5 border-b border-line bg-paper-2 px-4 py-2">
+            <span className="relative flex size-2.5 shrink-0">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-positive opacity-60" />
+              <span className="relative inline-flex size-2.5 rounded-full bg-positive" />
+            </span>
+            <span className="min-w-0 truncate text-[13px] text-ink">
+              <span className="font-semibold">Huddle in progress</span>
+              <span className="text-ink-mute">
+                {" · "}
+                {activeCall.count} {activeCall.count === 1 ? "person" : "people"}
+                {activeCall.startedByName ? ` · started by ${activeCall.startedByName}` : ""}
+              </span>
+            </span>
+            <Link to={`/w/${workspaceId}/call/${channelId}`} className="ml-auto shrink-0">
+              <span className="inline-flex items-center gap-1.5 rounded-control bg-positive px-3 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90">
+                <Phone className="size-3.5" /> Join
+              </span>
+            </Link>
+          </div>
+        )}
+
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
           <div className="px-5 pb-2 pt-8">
             <div className="grid size-12 place-items-center rounded-card bg-field">
@@ -228,6 +257,7 @@ export function ChannelView() {
                       {m.body && <MessageBody text={m.body} />}
                       {m.editedAt != null && <span className="ml-1.5 text-[11px] text-ink-faint">(edited)</span>}
                       {m.attachment && <AttachmentView a={m.attachment} />}
+                      {m.body && <MessagePreviews text={m.body} />}
                     </div>
                   )}
                   {stats && (

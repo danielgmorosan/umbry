@@ -11,6 +11,7 @@ import {
   Search,
   Copy,
   Check,
+  Phone,
 } from "lucide-react";
 import { NavBadge, Tooltip } from "@gossip/ui/stack";
 import { cn, truncateHandle } from "@/lib/utils";
@@ -87,6 +88,21 @@ export function GroupLabel({
   );
 }
 
+/** Green pulsing phone on channels with a live huddle (T3). */
+function ChannelCallBadge({ channelId }: { channelId: string }) {
+  const call = useRelay((s) => s.activeCallByChannel[channelId]);
+  if (!call) return null;
+  return (
+    <span
+      title={`Huddle in progress · ${call.count} ${call.count === 1 ? "person" : "people"}`}
+      className="relative grid size-4 shrink-0 place-items-center text-positive"
+    >
+      <Phone className="size-3.5" />
+      <span className="absolute -right-0.5 -top-0.5 size-1.5 animate-ping rounded-full bg-positive opacity-75" />
+    </span>
+  );
+}
+
 /** Unread count pill for a sidebar row (T2-09). */
 export function ChannelUnreadBadge({ channelId }: { channelId: string }) {
   const count = useNotifications((s) => s.unreadByChannel[channelId] ?? 0);
@@ -160,6 +176,7 @@ export function ChannelSidebar() {
             <Row key={c.id} to={`${base}/c/${c.id}`} active={c.id === channelId}>
               {c.type === "private" ? <Lock className="size-4 shrink-0" /> : <Hash className="size-4 shrink-0" />}
               <span className="min-w-0 flex-1 truncate">{c.name}</span>
+              <ChannelCallBadge channelId={c.id} />
               <ChannelUnreadBadge channelId={c.id} />
             </Row>
           ))}

@@ -14,7 +14,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync, mkdirSync, createReadStream } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { AccessToken } from "livekit-server-sdk";
+import { AccessToken, RoomServiceClient } from "livekit-server-sdk";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -151,6 +151,162 @@ function save() {
 
 const clients = new Set(); // { ws, userId, name, wsSubs:Set, chSubs:Set }
 let callAnnounce = null; // room → last token ts (T2-09 call-start announce debounce)
+
+// ── Link unfurling (T3) ──────────────────────────────────────────────
+const unfurlCache = new Map(); // url → { at, data }
+
+/** SSRF guard: refuse anything that could point inside the network. */
+function isPrivateHost(hostname) {
+  const h = hostname.toLowerCase();
+  if (h === "localhost" || h.endsWith(".local") || h.endsWith(".internal")) return true;
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(h)) {
+    const [a, b] = h.split(".").map(Number);
+    if (a === 127 || a === 10 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168)) return true;
+  }
+  if (h.includes(":")) return true; // IPv6 literals — not worth allowlisting
+  return false;
+}
+
+const META_ENTITIES = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'", "&#x27;": "'", "&nbsp;": " " };
+const decodeEntities = (s) => s.replace(/&[a-z0-9#x]+;/gi, (e) => META_ENTITIES[e.toLowerCase()] ?? e);
+
+function metaContent(html, ...names) {
+  for (const name of names) {
+    const re = new RegExp(
+      `<meta[^>]+(?:property|name)=["']${name}["'][^>]*content=["']([^"']+)["']|<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["']${name}["']`,
+      "i",
+    );
+    const m = re.exec(html);
+    const v = m?.[1] ?? m?.[2];
+    if (v) return decodeEntities(v).trim();
+  }
+  return undefined;
+}
+
+/** Fetch a page (bounded: 6s, 400KB, html only) and pull OG/twitter/title meta. */
+async function fetchUnfurl(parsed) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 6000);
+  try {
+    const res = await fetch(parsed.href, {
+      signal: ctrl.signal,
+      redirect: "follow",
+      headers: { "user-agent": "Mozilla/5.0 (compatible; GossipUnfurl/1.0)", accept: "text/html,*/*" },
+    });
+    const type = res.headers.get("content-type") ?? "";
+    if (type.startsWith("image/")) return { url: parsed.href, image: parsed.href };
+    if (!type.includes("html")) return { url: parsed.href };
+    const reader = res.body.getReader();
+    const chunks = [];
+    let size = 0;
+    while (size < 400_000) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      size += value.length;
+    }
+    void reader.cancel().catch(() => {});
+    const html = Buffer.concat(chunks).toString("utf8");
+    const title =
+      metaContent(html, "og:title", "twitter:title") ??
+      (decodeEntities(/<title[^>]*>([^<]+)<\/title>/i.exec(html)?.[1] ?? "").trim() || undefined);
+    let image = metaContent(html, "og:image", "og:image:url", "twitter:image");
+    if (image) {
+      try {
+        image = new URL(image, res.url || parsed.href).href; // resolve relative og:image
+        if (!/^https?:$/.test(new URL(image).protocol)) image = undefined;
+      } catch {
+        image = undefined;
+      }
+    }
+    return {
+      url: parsed.href,
+      title,
+      description: metaContent(html, "og:description", "twitter:description", "description"),
+      image,
+      siteName: metaContent(html, "og:site_name") ?? parsed.hostname.replace(/^www\./, ""),
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ── Active channel calls (T3) ────────────────────────────────────────
+// room name → { workspaceId, channelId, count, startedByName, since }.
+// Marked active when a token is issued; reconciled against LiveKit's live
+// room list every 20s so "call in progress" UI ends when everyone leaves.
+// DM rooms (opaque digests, no ":") are never tracked — no metadata leak.
+const activeCalls = new Map();
+const roomSvc = livekitConfigured
+  ? new RoomServiceClient(LIVEKIT_URL.replace(/^ws/, "http"), LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
+  : null;
+
+function callEvent(type, info) {
+  return {
+    type,
+    workspaceId: info.workspaceId,
+    channelId: info.channelId,
+    count: info.count,
+    startedByName: info.startedByName,
+  };
+}
+
+/** Broadcast a call event to whoever may see the channel (private → members only). */
+function broadcastCall(type, info) {
+  const workspace = db.workspaces[info.workspaceId];
+  const channel = workspace?.channels?.[info.channelId];
+  if (!workspace || !channel) return;
+  const evt = callEvent(type, info);
+  if (channel.type === "private") {
+    for (const uid of Object.keys(channel.members ?? {})) sendToUser(uid, evt);
+  } else {
+    broadcastWorkspace(info.workspaceId, evt);
+  }
+}
+
+/** Push the current active calls of a workspace to one freshly-opened socket. */
+function sendActiveCalls(ws, workspace, userId) {
+  for (const info of activeCalls.values()) {
+    if (info.workspaceId !== workspace.id) continue;
+    const channel = workspace.channels?.[info.channelId];
+    if (!canReadChannel(channel, userId)) continue;
+    send(ws, callEvent("callActive", info));
+  }
+}
+
+// Reconcile with LiveKit: update participant counts, end calls whose room
+// emptied, and (re)discover rooms after a relay restart.
+if (roomSvc) {
+  setInterval(async () => {
+    let rooms;
+    try {
+      rooms = await roomSvc.listRooms();
+    } catch {
+      return; // LiveKit unreachable — keep current state rather than flapping
+    }
+    const live = new Map(rooms.filter((r) => r.name.includes(":")).map((r) => [r.name, Number(r.numParticipants ?? 0)]));
+    for (const [room, info] of activeCalls) {
+      const n = live.get(room) ?? 0;
+      if (n === 0) {
+        // Grace period: a just-issued token may not have connected yet.
+        if (Date.now() - info.since < 30_000) continue;
+        activeCalls.delete(room);
+        broadcastCall("callEnded", info);
+      } else if (n !== info.count) {
+        info.count = n;
+        broadcastCall("callActive", info);
+      }
+    }
+    for (const [name, n] of live) {
+      if (n === 0 || activeCalls.has(name)) continue;
+      const [wsId, chId] = name.split(":");
+      if (!db.workspaces[wsId]?.channels?.[chId]) continue;
+      const info = { workspaceId: wsId, channelId: chId, count: n, startedByName: undefined, since: Date.now() };
+      activeCalls.set(name, info);
+      broadcastCall("callActive", info);
+    }
+  }, 20_000);
+}
 
 const shortId = (p) => p + randomUUID().replace(/-/g, "").slice(0, 8);
 const genCode = () =>
@@ -359,6 +515,31 @@ const httpServer = createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/livekit-config") {
     return json(200, { configured: livekitConfigured, url: LIVEKIT_URL });
   }
+  if (req.method === "GET" && req.url.startsWith("/unfurl?")) {
+    // Link previews (T3) — used for CHANNEL messages only (the client never
+    // sends DM urls here; that would leak E2E content to the relay).
+    const target = new URL(req.url, "http://relay").searchParams.get("url") ?? "";
+    let parsed;
+    try {
+      parsed = new URL(target);
+    } catch {
+      return json(400, { error: "invalid url" });
+    }
+    if (!/^https?:$/.test(parsed.protocol)) return json(400, { error: "http(s) only" });
+    if (isPrivateHost(parsed.hostname)) return json(400, { error: "host not allowed" });
+    const cached = unfurlCache.get(target);
+    if (cached && Date.now() - cached.at < 60 * 60_000) return json(200, cached.data);
+    try {
+      const data = await fetchUnfurl(parsed);
+      unfurlCache.set(target, { at: Date.now(), data });
+      if (unfurlCache.size > 500) unfurlCache.delete(unfurlCache.keys().next().value);
+      return json(200, data);
+    } catch {
+      const data = { url: target };
+      unfurlCache.set(target, { at: Date.now(), data });
+      return json(200, data); // unfetchable page → empty preview, not an error
+    }
+  }
   if (req.method === "POST" && req.url === "/livekit-token") {
     if (!livekitConfigured) return json(503, { error: "LiveKit not configured. Set creds in services/relay/.env" });
     try {
@@ -391,6 +572,18 @@ const httpServer = createServer(async (req, res) => {
           }
         }
         callAnnounce.set(room, Date.now());
+        // T3: mark the call live immediately (the 20s poller reconciles the
+        // real participant count and detects the end).
+        const info = activeCalls.get(room);
+        if (info) {
+          info.count += 1;
+          info.since = Date.now();
+          broadcastCall("callActive", info);
+        } else {
+          const fresh = { workspaceId: wsId, channelId: chId, count: 1, startedByName: name || identity, since: Date.now() };
+          activeCalls.set(room, fresh);
+          broadcastCall("callActive", fresh);
+        }
       }
       return json(200, { token: await at.toJwt(), url: LIVEKIT_URL });
     } catch (e) {
@@ -583,6 +776,7 @@ wss.on("connection", (ws) => {
           broadcastWorkspace(workspace.id, { type: "memberJoined", workspaceId: workspace.id, member: workspace.members[client.userId] });
         }
         send(ws, { type: "workspace", ref: m.ref, workspace: serializeWorkspace(workspace, client.userId) });
+        sendActiveCalls(ws, workspace, client.userId); // T3: live "call in progress" state
         break;
       }
 

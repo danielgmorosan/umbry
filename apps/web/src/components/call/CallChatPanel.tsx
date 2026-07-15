@@ -8,6 +8,7 @@ import { useRelay } from "@/stores/useRelay";
 import { useSession } from "@/stores/useSession";
 import { useContacts } from "@/stores/useContacts";
 import { gossipSdk, SdkEventType, MessageDirection, MessageType, type Message } from "@/lib/sdk";
+import { parseCallSignal, callSignalLabel } from "@/lib/callSignals";
 import { cn, formatTime, truncateHandle } from "@/lib/utils";
 import type { CallTarget } from "@/stores/useCall";
 
@@ -151,6 +152,14 @@ function DmChat({ peerId }: { peerId: string }) {
         {visible.map((m, i) => {
           const mine = m.direction === MessageDirection.OUTGOING;
           const who = mine ? "me" : peerName || truncateHandle(peerId, 8, 4);
+          const signal = parseCallSignal(m.content);
+          if (signal) {
+            return (
+              <div key={m.id ?? i} className="py-1 text-center text-[11.5px] text-ink-faint">
+                {callSignalLabel(signal, mine, peerName || truncateHandle(peerId, 8, 4))}
+              </div>
+            );
+          }
           return (
             <div key={m.id ?? i} className="flex items-start gap-2 py-1">
               <div className="min-w-0 flex-1">

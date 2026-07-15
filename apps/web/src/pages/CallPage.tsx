@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { DisconnectReason, type RoomOptions } from "livekit-client";
+import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
+import { DisconnectReason, RoomEvent, type RoomOptions } from "livekit-client";
 import { Video, Loader2, ServerCog, ArrowLeft } from "lucide-react";
 import "@livekit/components-styles";
 import { RoomContext } from "@livekit/components-react";
@@ -13,6 +13,7 @@ import { useAudioSettings } from "@/stores/useAudioSettings";
 import { useCall, sameTarget, type CallTarget } from "@/stores/useCall";
 import { relayUrl } from "@/lib/relayBase";
 import { dmRoomName } from "@/lib/call";
+import { sendCallSignal } from "@/lib/callSignals";
 import { truncateHandle } from "@/lib/utils";
 
 type State =
@@ -46,6 +47,12 @@ export function CallPage() {
   const { workspaceId = "", channelId = "", peerId = "" } = useParams();
   const isDm = !!peerId;
   const nav = useNavigate();
+  // ?answer=1 → we're picking up an incoming call, not placing one (T3):
+  // no invite marker gets sent, and no cancel on hangup.
+  const [searchParams] = useSearchParams();
+  const answering = searchParams.get("answer") === "1";
+  const sentInvite = useRef(false);
+  const peerJoined = useRef(false);
   const userId = useSession((s) => s.userId);
   const displayName = useSession((s) => s.displayName);
   const workspace = useRelay((s) => s.workspace);
@@ -117,11 +124,31 @@ export function CallPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "token request failed");
       await useCall.getState().connect({ url: data.url, token: data.token, target, options: roomOptions });
+      // T3: ring the other side over the E2E DM channel (unless we're the one answering).
+      if (isDm && !answering && !sentInvite.current) {
+        sentInvite.current = true;
+        void sendCallSignal(peerId, "invite");
+      }
       if (mounted.current) setState({ phase: "ready" });
     } catch (e) {
       if (mounted.current) setState({ phase: "error", message: e instanceof Error ? e.message : "Failed to start call" });
     }
-  }, [isDm, userId, peerId, workspaceId, channelId, displayName, target, roomOptions]);
+  }, [isDm, userId, peerId, workspaceId, channelId, displayName, target, roomOptions, answering]);
+
+  // T3: remember whether the other side ever connected — an unanswered
+  // hangup sends a cancel marker so their ring stops (and logs a missed call).
+  useEffect(() => {
+    if (!callRoom || !isDm) return;
+    if (callRoom.remoteParticipants.size > 0) peerJoined.current = true;
+    const onJoin = () => {
+      peerJoined.current = true;
+    };
+    callRoom.on(RoomEvent.ParticipantConnected, onJoin);
+    return () => {
+      callRoom.off(RoomEvent.ParticipantConnected, onJoin);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [callRoom, isDm]);
 
   const ran = useRef(false);
   useEffect(() => {
@@ -147,6 +174,11 @@ export function CallPage() {
     }
     if (!wasLive.current) return;
     wasLive.current = false;
+    // T3: hung up before they picked up → stop their ring.
+    if (isDm && sentInvite.current && !peerJoined.current) {
+      sentInvite.current = false;
+      void sendCallSignal(peerId, "cancel");
+    }
     const reason = useCall.getState().lastDisconnectReason;
     if (reason !== null && reason !== DisconnectReason.CLIENT_INITIATED) {
       setState({ phase: "disconnected", message: disconnectMessage(reason) });

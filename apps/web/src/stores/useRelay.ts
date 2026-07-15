@@ -92,6 +92,8 @@ interface RelayState {
   workspace: RelayWorkspace | null;
   messagesByChannel: Record<string, ChannelMsg[]>;
   presenceByChannel: Record<string, number>;
+  /** channelId → live huddle info; empty when no calls are running (T3). */
+  activeCallByChannel: Record<string, ActiveCall>;
   joinedChannels: Set<string>;
 
   connect: () => void;
@@ -133,7 +135,14 @@ interface RelayMsg {
   reason?: string;
   userId?: string;
   count?: number;
+  startedByName?: string;
   error?: string;
+}
+
+/** Live huddle in a channel (T3): participant count + who kicked it off. */
+export interface ActiveCall {
+  count: number;
+  startedByName?: string;
 }
 
 /** Relay errors carry their text in `message` (a string on error frames). */
@@ -172,6 +181,7 @@ export const useRelay = create<RelayState>((set, get) => ({
   workspace: null,
   messagesByChannel: {},
   presenceByChannel: {},
+  activeCallByChannel: {},
   joinedChannels: new Set(),
 
   connect: () => {
@@ -203,7 +213,9 @@ export const useRelay = create<RelayState>((set, get) => ({
       switch (m.type) {
         case "workspace":
         case "workspaceCreated":
-          if (m.workspace) set({ workspace: m.workspace });
+          // Fresh snapshot — the relay follows with callActive events for any
+          // live huddles, so reset the map instead of carrying stale entries.
+          if (m.workspace) set({ workspace: m.workspace, activeCallByChannel: {} });
           break;
         case "channelCreated":
         case "channelUpdated": {
@@ -366,6 +378,27 @@ export const useRelay = create<RelayState>((set, get) => ({
           break;
         case "presence":
           if (m.channelId) set((st) => ({ presenceByChannel: { ...st.presenceByChannel, [m.channelId!]: m.count ?? 0 } }));
+          break;
+        case "callActive":
+          // Live huddle state (T3): drives the in-channel banner + sidebar dot.
+          if (m.channelId) {
+            set((st) => ({
+              activeCallByChannel: {
+                ...st.activeCallByChannel,
+                [m.channelId!]: { count: m.count ?? 1, startedByName: m.startedByName },
+              },
+            }));
+          }
+          break;
+        case "callEnded":
+          if (m.channelId) {
+            set((st) => {
+              if (!(m.channelId! in st.activeCallByChannel)) return st;
+              const next = { ...st.activeCallByChannel };
+              delete next[m.channelId!];
+              return { activeCallByChannel: next };
+            });
+          }
           break;
         case "callStarted": {
           // T2-09: relay signals a channel call starting (LiveKit token issued).

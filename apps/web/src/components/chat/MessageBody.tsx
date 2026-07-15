@@ -15,11 +15,13 @@ import { CodeBlock } from "./CodeBlock";
  */
 
 /**
- * Inline tokens: @[mention](id) · `code` · **bold** · *italic*
+ * Inline tokens: @[mention](id) · `code` · **bold** · *italic* · https?:// URL
  * (first match wins, left to right).
  */
-const INLINE = /(@\[[^\]\n]+\]\(gossip1[a-z0-9]+\))|(`[^`\n]+`)|(\*\*[^\n]+?\*\*)|(\*[^*\s][^*\n]*?\*)/;
+const INLINE = /(@\[[^\]\n]+\]\(gossip1[a-z0-9]+\))|(`[^`\n]+`)|(\*\*[^\n]+?\*\*)|(\*[^*\s][^*\n]*?\*)|(https?:\/\/[^\s<>"]+)/;
 const MENTION = /^@\[([^\]]+)\]\((gossip1[a-z0-9]+)\)$/;
+/** Punctuation that ends a sentence, not a URL — rendered outside the link. */
+const URL_TRAIL = /[.,!?;:)\]}>"']+$/;
 
 function renderInline(text: string): ReactNode[] {
   const out: ReactNode[] = [];
@@ -54,8 +56,26 @@ function renderInline(text: string): ReactNode[] {
           {renderInline(tok.slice(2, -2))}
         </strong>,
       );
-    } else {
+    } else if (m[4]) {
       out.push(<em key={k++}>{renderInline(tok.slice(1, -1))}</em>);
+    } else {
+      // Bare URL → real hyperlink. Scheme is locked to http(s) by the regex,
+      // so javascript:/data: can never become a link. Trailing sentence
+      // punctuation stays outside the anchor.
+      const trail = URL_TRAIL.exec(tok)?.[0] ?? "";
+      const url = trail ? tok.slice(0, -trail.length) : tok;
+      out.push(
+        <a
+          key={k++}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="break-all font-medium underline decoration-current/40 underline-offset-2 hover:decoration-current"
+        >
+          {url}
+        </a>,
+      );
+      if (trail) out.push(trail);
     }
     rest = rest.slice(m.index + tok.length);
   }

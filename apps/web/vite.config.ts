@@ -71,6 +71,8 @@ export default defineConfig({
       "/openclaw": { target: "http://localhost:8788" },
       // Channel attachments (upload + download), served by the relay.
       "/uploads": { target: "http://localhost:8788" },
+      // Link previews (OG metadata for channel messages), served by the relay.
+      "/unfurl": { target: "http://localhost:8788" },
     },
   },
   preview: { headers: coopCoep },
