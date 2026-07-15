@@ -74,8 +74,12 @@ export const useContacts = create<ContactsState>((set, get) => ({
     if (!id.startsWith("gossip1")) return { ok: false, error: "Enter a valid gossip user ID (gossip1…)." };
     if (id === gossipSdk.userId) return { ok: false, error: "That's your own ID." };
     try {
-      // Fetches their key, adds the contact, AND creates+initiates the discussion.
+      // Fetches their key, adds the contact, AND creates+initiates the
+      // discussion. `username` rides inside the E2E announcement so the other
+      // side names the contact after US — without it their SDK falls back to
+      // "New Request N" (the bug everyone saw).
       const res = await gossipSdk.discussions.startByUserId(id, name.trim() || id.slice(0, 12), {
+        username: useSession.getState().displayName || undefined,
         message: "👋",
       });
       if (!res.success) return { ok: false, error: res.error?.message ?? "Couldn't start the chat." };
