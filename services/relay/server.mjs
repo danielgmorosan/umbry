@@ -768,18 +768,31 @@ wss.on("connection", (ws) => {
             : m.avatar === null
               ? null // explicit reset back to the deterministic default
               : undefined;
-        if (avatar !== undefined && !isAnon(client.userId)) {
+        if (avatar !== undefined) client.avatar = avatar ?? undefined;
+        // Propagate profile changes (name and/or avatar) onto this user's
+        // member record in every workspace — a rename in Settings should
+        // show to everyone, not only in workspaces joined afterwards (T3).
+        if (!isAnon(client.userId)) {
           let changed = false;
           for (const workspace of Object.values(db.workspaces)) {
             const member = workspace.members[client.userId];
-            if (!member || (member.avatar ?? null) === avatar) continue;
-            if (avatar === null) delete member.avatar;
-            else member.avatar = avatar;
-            changed = true;
-            broadcastWorkspace(workspace.id, { type: "memberUpdated", workspaceId: workspace.id, member });
+            if (!member) continue;
+            let memberChanged = false;
+            if (client.name && member.name !== client.name) {
+              member.name = client.name;
+              memberChanged = true;
+            }
+            if (avatar !== undefined && (member.avatar ?? null) !== avatar) {
+              if (avatar === null) delete member.avatar;
+              else member.avatar = avatar;
+              memberChanged = true;
+            }
+            if (memberChanged) {
+              changed = true;
+              broadcastWorkspace(workspace.id, { type: "memberUpdated", workspaceId: workspace.id, member });
+            }
           }
           if (changed) save();
-          client.avatar = avatar ?? undefined;
         }
         break;
       }

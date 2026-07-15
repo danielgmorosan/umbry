@@ -62,6 +62,7 @@ export function ProfileSettings() {
 
   const save = () => {
     setDisplayName(name.trim());
+    useRelay.getState().syncProfile(); // push the new name to workspace members right away
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
   };
