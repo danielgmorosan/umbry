@@ -54,7 +54,7 @@ export function UserProfileDialog({
     <StackModal onClose={onClose} width="md">
       <ModalBody>
         <div className="flex flex-col items-center pb-1 pt-2 text-center">
-          <UserAvatar name={shownName} id={userId} className="!size-20 !text-[26px] !rounded-full" />
+          <UserAvatar name={shownName} id={userId} className="!size-20 !text-[26px] !rounded-full" presence={!me} />
           {editing ? (
             <form
               className="mt-3 flex w-full max-w-[260px] items-center gap-2"

@@ -148,7 +148,14 @@ export function ChannelView({ embedded }: { embedded?: boolean } = {}) {
   const channel = workspace?.channels.find((c) => c.id === channelId);
   const conn = useRelay((s) => s.conn);
   const messages = useRelay((s) => s.messagesByChannel[channelId]) ?? [];
-  const presence = useRelay((s) => s.presenceByChannel[channelId]) ?? 0;
+  const viewing = useRelay((s) => s.presenceByChannel[channelId]) ?? 0;
+  // "N online" now means workspace members who are actually online (T3), not
+  // just people with this channel open. Public channels: all members.
+  const onlineUsers = useRelay((s) => s.onlineUsers);
+  const onlineCount = useMemo(() => {
+    const members = channel?.type === "private" ? channel.members : workspace?.members.map((m) => m.userId);
+    return (members ?? []).filter((id) => onlineUsers.has(id)).length;
+  }, [channel?.type, channel?.members, workspace?.members, onlineUsers]);
   const activeCall = useRelay((s) => s.activeCallByChannel[channelId]);
   const inThisCall = useCall(
     (s) => s.status !== "idle" && s.target?.kind === "channel" && s.target.channelId === channelId,
@@ -263,9 +270,12 @@ export function ChannelView({ embedded }: { embedded?: boolean } = {}) {
           }
           actions={
             <>
-              <span className="mr-1 hidden items-center gap-1.5 rounded-control border border-line px-2 py-1 text-[12px] text-ink-mute md:inline-flex">
+              <span
+                title={viewing > 0 ? `${viewing} viewing this channel now` : undefined}
+                className="mr-1 hidden items-center gap-1.5 rounded-control border border-line px-2 py-1 text-[12px] text-ink-mute md:inline-flex"
+              >
                 <Circle className={conn === "open" ? "size-2 fill-[color:var(--st-positive)] text-[color:var(--st-positive)]" : "size-2 fill-[color:var(--st-ink-faint)] text-[color:var(--st-ink-faint)]"} />
-                {presence} online
+                {onlineCount} online
               </span>
               <Link to={`/w/${workspaceId}/call/${channelId}`}>
                 <HeaderIconButton label="Start huddle"><Phone className="size-4" /></HeaderIconButton>

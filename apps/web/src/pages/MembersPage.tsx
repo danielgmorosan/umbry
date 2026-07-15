@@ -76,7 +76,7 @@ export function MembersPage() {
                   style={{ borderTopWidth: i ? 1 : 0 }}
                 >
                   <button onClick={() => startDm(m.userId, m.name)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-                    <Avatar name={m.name} id={m.userId} className="!size-9 !text-[13px]" />
+                    <Avatar name={m.name} id={m.userId} className="!size-9 !text-[13px]" presence />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-[14px] font-medium text-ink">{m.name}</span>

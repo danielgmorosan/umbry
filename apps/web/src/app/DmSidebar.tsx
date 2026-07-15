@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Users, ShieldCheck, Plus } from "lucide-react";
 import { NavBadge } from "@gossip/ui/stack";
 import { UserAvatar as Avatar } from "@/components/UserAvatar";
 import { useSession } from "@/stores/useSession";
+import { useRelay } from "@/stores/useRelay";
 import { useContacts, useContactsLive } from "@/stores/useContacts";
 import { useNotifications } from "@/stores/useNotifications";
 import { NewDmDialog } from "@/components/chat/NewDmDialog";
@@ -35,6 +36,13 @@ export function DmSidebar() {
   const sessionStatus = useSession((s) => s.status);
   const contacts = useContacts((s) => s.contacts);
   useContactsLive();
+
+  // Watch online presence for every DM contact (T3).
+  const contactIds = contacts.map((c) => c.userId).join(",");
+  useEffect(() => {
+    if (sessionStatus !== "open" || !contactIds) return;
+    useRelay.getState().watchPresence(contactIds.split(","));
+  }, [sessionStatus, contactIds]);
 
   return (
     <aside className="flex h-full w-[264px] shrink-0 flex-col border-r border-line bg-paper-2 font-stack max-md:w-auto max-md:min-w-0 max-md:flex-1">
@@ -72,7 +80,7 @@ export function DmSidebar() {
         {showDm &&
           contacts.map((c) => (
             <Row key={c.userId} to={`/home/dm/${encodeURIComponent(c.userId)}`} active={dmId === c.userId}>
-              <Avatar name={c.name} id={c.userId} size="sm" />
+              <Avatar name={c.name} id={c.userId} size="sm" presence />
               <span className="min-w-0 flex-1 truncate">{c.name}</span>
               <DmUnreadBadge peerId={c.userId} />
               <ShieldCheck className="size-3 shrink-0 text-positive/70" />

@@ -15,6 +15,7 @@ import { parseImageMarker, imageMarkerBody, fileToDmImageDataUrl } from "@/lib/m
 import { dmRoomName } from "@/lib/call";
 import { relayUrl } from "@/lib/relayBase";
 import { useCall } from "@/stores/useCall";
+import { useRelay } from "@/stores/useRelay";
 import { useSession } from "@/stores/useSession";
 import { useUnlockPrompt } from "@/components/UnlockDialog";
 import { useLightbox } from "@/components/ImageLightbox";
@@ -68,6 +69,13 @@ export function RealDmView({ peerId, peerName, embedded }: { peerId: string; pee
   useEffect(() => {
     if (!isSelf) useNotifications.getState().clearDmUnread(peerId);
   }, [isSelf, peerId, messages.length]);
+
+  // T3: watch this peer's online presence (covers contacts you share no
+  // workspace with) and reflect it in the header.
+  const peerOnline = useRelay((s) => s.onlineUsers.has(peerId));
+  useEffect(() => {
+    if (!isSelf && status === "open") useRelay.getState().watchPresence([peerId]);
+  }, [isSelf, peerId, status]);
 
   // T3: is a call live in this DM? The room name is an opaque digest only the
   // two peers can derive, so polling its count leaks nothing to the relay.
@@ -236,11 +244,12 @@ export function RealDmView({ peerId, peerName, embedded }: { peerId: string; pee
               <span className="grid size-7 place-items-center rounded-control bg-ink text-paper"><ShieldCheck className="size-4" /></span>
             ) : (
               <button onClick={() => setProfileOpen(true)} title="View profile / set nickname" className="transition-transform hover:scale-105">
-                <Avatar name={peerName || peerId} id={peerId} className="!size-7 !text-[11px]" />
+                <Avatar name={peerName || peerId} id={peerId} className="!size-7 !text-[11px]" presence />
               </button>
             )
           }
           title={title}
+          subtitle={!isSelf ? (peerOnline ? "Online" : "Offline") : undefined}
           badge={<E2EPill />}
           actions={
             !isSelf ? (

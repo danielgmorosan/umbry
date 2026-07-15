@@ -152,6 +152,56 @@ function save() {
 const clients = new Set(); // { ws, userId, name, wsSubs:Set, chSubs:Set }
 let callAnnounce = null; // room → last token ts (T2-09 call-start announce debounce)
 
+// ── Online presence (T3) ────────────────────────────────────────────
+// userId → number of open sockets. Presence is workspace-confidential: a
+// user's online state is revealed only to people who share a workspace with
+// them or who are watching them as a DM contact.
+const onlineUsers = new Map();
+
+function presenceRecipients(userId) {
+  // Sockets that may see this user's online state: co-members of any shared
+  // workspace, plus explicit DM-contact watchers.
+  const out = new Set();
+  for (const ws of Object.values(db.workspaces)) {
+    if (!ws.members?.[userId]) continue;
+    for (const c of clients) if (c.wsSubs.has(ws.id)) out.add(c);
+  }
+  for (const c of clients) if (c.presenceWatch?.has(userId)) out.add(c);
+  return out;
+}
+
+function broadcastPresence(userId, online) {
+  const evt = JSON.stringify({ type: "userPresence", userId, online });
+  for (const c of presenceRecipients(userId)) if (c.ws.readyState === c.ws.OPEN) c.ws.send(evt);
+}
+
+function markOnline(client) {
+  const userId = client.userId;
+  if (!userId || isAnon(userId) || client.onlineMarked === userId) return;
+  client.onlineMarked = userId;
+  const n = (onlineUsers.get(userId) ?? 0) + 1;
+  onlineUsers.set(userId, n);
+  if (n === 1) broadcastPresence(userId, true);
+}
+
+function markOffline(client) {
+  const userId = client.onlineMarked;
+  if (!userId) return;
+  client.onlineMarked = null;
+  const n = (onlineUsers.get(userId) ?? 1) - 1;
+  if (n <= 0) {
+    onlineUsers.delete(userId);
+    broadcastPresence(userId, false);
+  } else {
+    onlineUsers.set(userId, n);
+  }
+}
+
+/** Online members of a workspace the requester can see. */
+function onlineMembersOf(workspace) {
+  return Object.keys(workspace.members ?? {}).filter((id) => onlineUsers.has(id));
+}
+
 // ── Link unfurling (T3) ──────────────────────────────────────────────
 const unfurlCache = new Map(); // url → { at, data }
 
@@ -759,6 +809,13 @@ wss.on("connection", (ws) => {
       case "hello": {
         client.userId = String(m.userId ?? "").slice(0, 80) || `anon-${randomUUID().slice(0, 6)}`;
         client.name = String(m.name ?? "Someone").slice(0, 40);
+        markOnline(client); // T3: presence
+        // Late-arriving identity (unlock after connect): refresh the online
+        // snapshot for workspaces this socket already subscribed to.
+        for (const wsId of client.wsSubs) {
+          const w = db.workspaces[wsId];
+          if (w?.members?.[client.userId]) send(ws, { type: "workspacePresence", workspaceId: wsId, online: onlineMembersOf(w) });
+        }
         // Optional profile avatar (T3): small data-URI image, synced onto the
         // member record of every workspace this user belongs to so other
         // members actually see custom profile pics.
@@ -842,6 +899,7 @@ wss.on("connection", (ws) => {
         save();
         send(ws, { type: "workspace", ref: m.ref, workspace: serializeWorkspace(workspace, client.userId) });
         broadcastWorkspace(workspace.id, { type: "memberJoined", workspaceId: workspace.id, member: workspace.members[client.userId] });
+        if (onlineUsers.has(client.userId)) broadcastPresence(client.userId, true); // T3: existing members learn the joiner is online
         break;
       }
 
@@ -862,9 +920,23 @@ wss.on("connection", (ws) => {
           workspace.members[client.userId] = { userId: client.userId, name: client.name, role: "member", joinedAt: Date.now(), ...(client.avatar ? { avatar: client.avatar } : {}) };
           save();
           broadcastWorkspace(workspace.id, { type: "memberJoined", workspaceId: workspace.id, member: workspace.members[client.userId] });
+        if (onlineUsers.has(client.userId)) broadcastPresence(client.userId, true); // T3: existing members learn the joiner is online
         }
         send(ws, { type: "workspace", ref: m.ref, workspace: serializeWorkspace(workspace, client.userId) });
         sendActiveCalls(ws, workspace, client.userId); // T3: live "call in progress" state
+        send(ws, { type: "workspacePresence", workspaceId: workspace.id, online: onlineMembersOf(workspace) }); // T3
+        break;
+      }
+
+      case "watchPresence": {
+        // DM presence (T3): subscribe to specific contacts' online state.
+        // Scoped to who the requester is already in contact with; reveals only
+        // a boolean, no last-seen. Additive (multiple callers - sidebar + open
+        // DM), capped. Reply with current status for the requested ids.
+        const ids = Array.isArray(m.userIds) ? m.userIds.slice(0, 500).map(String) : [];
+        client.presenceWatch ??= new Set();
+        for (const id of ids) if (client.presenceWatch.size < 1000) client.presenceWatch.add(id);
+        send(ws, { type: "presenceSnapshot", online: ids.filter((id) => onlineUsers.has(id)) });
         break;
       }
 
@@ -1345,6 +1417,7 @@ wss.on("connection", (ws) => {
 
   ws.on("close", () => {
     const subs = [...client.chSubs];
+    markOffline(client); // T3: presence (must run BEFORE removing from clients)
     clients.delete(client);
     for (const chKey of subs) {
       const [wsId, chId] = chKey.split("/");

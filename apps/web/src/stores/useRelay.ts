@@ -105,6 +105,8 @@ interface RelayState {
   activeCallByChannel: Record<string, ActiveCall>;
   /** channelId → userId → who's typing right now (entries expire after 4s). */
   typingByChannel: Record<string, Record<string, { name: string; ts: number }>>;
+  /** Currently-online userIds (workspace members + watched DM contacts) - T3. */
+  onlineUsers: Set<string>;
   joinedChannels: Set<string>;
 
   connect: () => void;
@@ -129,6 +131,8 @@ interface RelayState {
   post: (workspaceId: string, channelId: string, body: string, threadRootId?: string, attachmentId?: string, replyToId?: string) => void;
   /** Throttled "I'm typing" signal for a channel (T3). */
   sendTyping: (workspaceId: string, channelId: string) => void;
+  /** Subscribe to online presence for specific DM contacts (T3). */
+  watchPresence: (userIds: string[]) => void;
   /** Last leaver tells the relay the call is over (verified server-side) and clears it locally. */
   callEndedHint: (workspaceId: string, channelId: string) => void;
   editMessage: (workspaceId: string, channelId: string, messageId: string, body: string) => void;
@@ -164,6 +168,7 @@ interface RelayMsg {
   count?: number;
   startedByName?: string;
   name?: string;
+  online?: string[] | boolean;
   error?: string;
 }
 
@@ -220,6 +225,7 @@ export const useRelay = create<RelayState>((set, get) => ({
   presenceByChannel: {},
   activeCallByChannel: {},
   typingByChannel: {},
+  onlineUsers: new Set(),
   joinedChannels: new Set(),
 
   connect: () => {
@@ -449,6 +455,34 @@ export const useRelay = create<RelayState>((set, get) => ({
         case "presence":
           if (m.channelId) set((st) => ({ presenceByChannel: { ...st.presenceByChannel, [m.channelId!]: m.count ?? 0 } }));
           break;
+        case "workspacePresence": {
+          // Authoritative online snapshot for this workspace's members (T3):
+          // reconcile those members, leave DM-watched contacts untouched.
+          const ids = Array.isArray(m.online) ? m.online : [];
+          set((st) => {
+            const memberIds = st.workspace && st.workspace.id === m.workspaceId ? st.workspace.members.map((x) => x.userId) : [];
+            const next = new Set(st.onlineUsers);
+            for (const id of memberIds) next.delete(id); // clear, then re-add the online ones
+            for (const id of ids) next.add(id);
+            return { onlineUsers: next };
+          });
+          break;
+        }
+        case "presenceSnapshot": {
+          const ids = Array.isArray(m.online) ? m.online : [];
+          set((st) => ({ onlineUsers: new Set([...st.onlineUsers, ...ids]) }));
+          break;
+        }
+        case "userPresence": {
+          if (!m.userId) break;
+          set((st) => {
+            const next = new Set(st.onlineUsers);
+            if (m.online) next.add(m.userId!);
+            else next.delete(m.userId!);
+            return { onlineUsers: next };
+          });
+          break;
+        }
         case "typing": {
           // "X is typing" (T3) - entries expire after 4s unless refreshed.
           const myId = useSession.getState().userId;
@@ -673,6 +707,17 @@ export const useRelay = create<RelayState>((set, get) => ({
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: "typing", workspaceId, channelId }));
     }
+  },
+
+  watchPresence: (userIds) => {
+    get().connect();
+    const send = () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        sendHello();
+        ws.send(JSON.stringify({ type: "watchPresence", userIds }));
+      } else setTimeout(send, 400);
+    };
+    send();
   },
 
   callEndedHint: (workspaceId, channelId) => {
