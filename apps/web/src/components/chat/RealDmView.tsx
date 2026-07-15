@@ -17,6 +17,8 @@ import { relayUrl } from "@/lib/relayBase";
 import { useCall } from "@/stores/useCall";
 import { useSession } from "@/stores/useSession";
 import { useUnlockPrompt } from "@/components/UnlockDialog";
+import { useLightbox } from "@/components/ImageLightbox";
+import { useFileDrop } from "@/lib/useFileDrop";
 import { useContacts } from "@/stores/useContacts";
 import { useNotifications } from "@/stores/useNotifications";
 import { cn, formatTime, truncateHandle } from "@/lib/utils";
@@ -42,6 +44,8 @@ export function RealDmView({ peerId, peerName }: { peerId: string; peerName?: st
   const [editingId, setEditingId] = useState<number | null>(null);
   const [attachNotice, setAttachNotice] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Drag an image anywhere onto the conversation to send it (T3).
+  const drop = useFileDrop((files) => void sendImages(files));
 
   // @mention picker candidates (T2-05): your contacts.
   const contacts = useContacts((s) => s.contacts);
@@ -189,7 +193,12 @@ export function RealDmView({ peerId, peerName }: { peerId: string; peerName?: st
   const pending = !isSelf && messages.some((m) => m.direction === MessageDirection.OUTGOING && String(m.status) === "waiting_session");
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="relative flex min-h-0 flex-1 flex-col" {...drop.props}>
+      {drop.dragging && (
+        <div className="pointer-events-none absolute inset-2 z-30 grid place-items-center rounded-card border-2 border-dashed border-ink bg-paper/85">
+          <span className="text-[14px] font-semibold text-ink">Drop an image to send it end-to-end encrypted</span>
+        </div>
+      )}
       <PaneHeader
         icon={
           isSelf ? (
@@ -263,7 +272,12 @@ export function RealDmView({ peerId, peerName }: { peerId: string; peerName?: st
                 <div key={m.id ?? i} className={cn("group flex items-end gap-2", mine ? "justify-end" : "justify-start")}>
                   {!mine && <div className="w-7 shrink-0"><Avatar name={peerName || peerId} id={peerId} className="!size-7 !text-[11px]" /></div>}
                   <div className={cn("flex max-w-[68%] flex-col", mine ? "items-end" : "items-start")}>
-                    <img src={image} alt="Shared image" className="max-h-72 rounded-card border border-line object-contain" />
+                    <button
+                      onClick={() => useLightbox.getState().open({ src: image, alt: "Shared image (E2E)" })}
+                      className="cursor-zoom-in"
+                    >
+                      <img src={image} alt="Shared image" className="max-h-72 rounded-card border border-line object-contain" />
+                    </button>
                     <span className="mt-0.5 text-[10px] text-ink-faint">{formatTime(new Date(m.timestamp))} · E2E</span>
                   </div>
                 </div>

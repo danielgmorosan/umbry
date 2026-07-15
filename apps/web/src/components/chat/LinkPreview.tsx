@@ -3,6 +3,7 @@ import { Play } from "lucide-react";
 import { relayUrl } from "@/lib/relayBase";
 import { extractUrls, youtubeId } from "@/lib/linkify";
 import { isImageUrl } from "@/lib/media";
+import { useLightbox } from "@/components/ImageLightbox";
 import { cn } from "@/lib/utils";
 
 /**
@@ -107,7 +108,10 @@ function ImageCard({ url }: { url: string }) {
   const [failed, setFailed] = useState(false);
   if (failed) return null;
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer" className="block w-fit max-w-md">
+    <button
+      onClick={() => useLightbox.getState().open({ src: url, href: url })}
+      className="block w-fit max-w-md cursor-zoom-in"
+    >
       <img
         src={url}
         alt=""
@@ -115,7 +119,7 @@ function ImageCard({ url }: { url: string }) {
         onError={() => setFailed(true)}
         className="max-h-72 rounded-card border border-line object-contain"
       />
-    </a>
+    </button>
   );
 }
 

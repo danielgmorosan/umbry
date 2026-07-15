@@ -5,6 +5,7 @@ import { router } from "./app/router";
 import { useSession } from "./stores/useSession";
 import { CallDock } from "./components/CallDock";
 import { UnlockDialog } from "./components/UnlockDialog";
+import { ImageLightbox } from "./components/ImageLightbox";
 import { IncomingCallOverlay } from "./components/IncomingCallOverlay";
 import { NotificationToaster } from "./components/NotificationToaster";
 import "./lib/devLivekit";
@@ -33,6 +34,8 @@ createRoot(document.getElementById("root")!).render(
     <IncomingCallOverlay />
     {/* In-place session unlock (T3) — usable from any page without navigation. */}
     <UnlockDialog />
+    {/* Image lightbox (T3) — inline images open here instead of a new tab. */}
+    <ImageLightbox />
     {/* Live notification toasts (T2-09) — outside the router for the same reason. */}
     <NotificationToaster />
   </StrictMode>,

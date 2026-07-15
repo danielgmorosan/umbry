@@ -1,20 +1,25 @@
 import { FileText, Download } from "lucide-react";
 import { relayUrl } from "@/lib/relayBase";
 import { formatBytes, INLINE_IMAGE_TYPES, type AttachmentRef } from "@/lib/uploads";
+import { useLightbox } from "@/components/ImageLightbox";
 
 /** Inline render of a channel attachment: image preview or a file card. */
 export function AttachmentView({ a }: { a: AttachmentRef }) {
   const href = relayUrl(a.url);
   if (INLINE_IMAGE_TYPES.has(a.type)) {
     return (
-      <a href={href} target="_blank" rel="noreferrer" title={a.name} className="mt-1 block w-fit">
+      <button
+        onClick={() => useLightbox.getState().open({ src: href, alt: a.name })}
+        title={a.name}
+        className="mt-1 block w-fit cursor-zoom-in"
+      >
         <img
           src={href}
           alt={a.name}
           loading="lazy"
           className="max-h-72 max-w-sm rounded-card border border-line bg-field object-contain"
         />
-      </a>
+      </button>
     );
   }
   return (

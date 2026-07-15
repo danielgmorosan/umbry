@@ -17,6 +17,7 @@ import { UserAvatar as Avatar } from "@/components/UserAvatar";
 import { useRelay, type RelayChannel } from "@/stores/useRelay";
 import { useSession } from "@/stores/useSession";
 import { useUnlockPrompt } from "@/components/UnlockDialog";
+import { useFileDrop } from "@/lib/useFileDrop";
 import { useNotifications } from "@/stores/useNotifications";
 import { useCall } from "@/stores/useCall";
 import { formatTime } from "@/lib/utils";
@@ -80,6 +81,8 @@ export function ChannelView() {
   const [membersOpen, setMembersOpen] = useState(false);
   const [profileUser, setProfileUser] = useState<{ id: string; name: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Drag files anywhere onto the channel to upload them (T3).
+  const drop = useFileDrop((files) => void handleAttach(files));
 
   /** T-13: upload each picked file to the relay, then post it as a message. */
   const handleAttach = async (files: FileList) => {
@@ -186,7 +189,12 @@ export function ChannelView() {
 
   return (
     <div className="relative flex min-h-0 flex-1">
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="relative flex min-w-0 flex-1 flex-col" {...drop.props}>
+        {drop.dragging && (
+          <div className="pointer-events-none absolute inset-2 z-30 grid place-items-center rounded-card border-2 border-dashed border-ink bg-paper/85">
+            <span className="text-[14px] font-semibold text-ink">Drop to upload to #{name}</span>
+          </div>
+        )}
         <PaneHeader
           icon={isPrivate ? <Lock className="size-4 text-ink-faint" /> : <Hash className="size-4 text-ink-faint" />}
           title={name}
