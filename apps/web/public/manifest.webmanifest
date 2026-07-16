@@ -1,7 +1,7 @@
 {
   "name": "Gossip Workspace",
   "short_name": "Gossip",
-  "description": "Private, decentralized team workspace on Gossip's E2E stack.",
+  "description": "Private, decentralized team workspace on Gossip's E2EE stack.",
   "theme_color": "#0F1115",
   "background_color": "#0F1115",
   "display": "standalone",

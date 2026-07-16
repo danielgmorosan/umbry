@@ -24,7 +24,7 @@ export function LiveBars({
   );
 }
 
-/** Small status dot that breathes gently (live/E2E pills). */
+/** Small status dot that breathes gently (live/E2EE pills). */
 export function BreathingDot({ className }: { className?: string }) {
   return (
     <span

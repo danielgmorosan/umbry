@@ -7,7 +7,7 @@ const apps = [
   { id: "mail", icon: Mail, name: "Mail", provider: "JMAP / IMAP", desc: "Inbox, threads, send to channel." },
   { id: "calendar", icon: Calendar, name: "Calendar", provider: "CalDAV", desc: "Schedule, invites, huddles." },
   { id: "files", icon: FileText, name: "Files", provider: "Nextcloud · WebDAV", desc: "Browse and share workspace files." },
-  { id: "notes", icon: NotebookPen, name: "Notes", provider: "Standard Notes · E2E", desc: "Encrypted notes & meeting docs." },
+  { id: "notes", icon: NotebookPen, name: "Notes", provider: "Standard Notes · E2EE", desc: "Encrypted notes & meeting docs." },
   { id: "calls", icon: Video, name: "Calls", provider: "LiveKit", desc: "Huddles with the AI notetaker." },
 ];
 

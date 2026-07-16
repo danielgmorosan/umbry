@@ -2,9 +2,9 @@
  * Gossip Workspace — relay (v1).
  *
  * Source of truth for workspaces, channels, membership, and channel messages
- * (the "workspace-confidential", non-E2E group transport from the spec — TLS in transit,
+ * (the "workspace-confidential", non-E2EE group transport from the spec — TLS in transit,
  * persisted to disk here, NOT end-to-end encrypted; that's the deliberate v1 tradeoff
- * until group-E2E (fan-out → MLS) lands). DMs stay E2E via the gossip-sdk, untouched.
+ * until group-E2EE (fan-out → MLS) lands). DMs stay E2EE via the gossip-sdk, untouched.
  *
  * Run: node services/relay/server.mjs   (PORT env, default 8788)
  */
@@ -45,7 +45,7 @@ const livekitConfigured = Boolean(LIVEKIT_URL && LIVEKIT_API_KEY && LIVEKIT_API_
 // ── Gossip AI (model routing) ──────────────────────────────────────
 // Default route = local Ollama (native /api/chat, NOT /v1 — keeps tool-calling intact).
 // Cloud (Anthropic) is an opt-in route added later. The AI lives here in the relay, which
-// only holds CHANNEL data — so it structurally cannot read E2E DMs.
+// only holds CHANNEL data — so it structurally cannot read E2EE DMs.
 const AI_ROUTE = process.env.AI_ROUTE ?? "local";
 const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://127.0.0.1:11434";
 const AI_MODEL = process.env.AI_MODEL ?? "qwen2.5:14b";
@@ -685,7 +685,7 @@ const httpServer = createServer(async (req, res) => {
   }
   if (req.method === "GET" && req.url.startsWith("/unfurl?")) {
     // Link previews (T3) — used for CHANNEL messages only (the client never
-    // sends DM urls here; that would leak E2E content to the relay).
+    // sends DM urls here; that would leak E2EE content to the relay).
     const target = new URL(req.url, "http://relay").searchParams.get("url") ?? "";
     let parsed;
     try {

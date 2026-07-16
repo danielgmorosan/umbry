@@ -53,7 +53,7 @@ export function DmSidebar() {
           <div className="mt-0.5 text-[10px] text-ink-faint">personal space, no workspace needed</div>
         </div>
         <span className="inline-flex shrink-0 items-center gap-1 rounded-control bg-field px-2 py-0.5 text-[11px] font-medium text-positive">
-          <BreathingDot /> E2E
+          <BreathingDot /> E2EE
         </span>
       </div>
 

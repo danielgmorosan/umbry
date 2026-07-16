@@ -396,7 +396,7 @@ export function Composer({
               if (onAttach) {
                 onAttach(files); // real upload flow (channels - T-13)
               } else {
-                // No handler on this surface (e.g. E2E DMs: no SDK attachment
+                // No handler on this surface (e.g. E2EE DMs: no SDK attachment
                 // API) - honest no-op, never a fake success.
                 showNotice(attachNotice ?? "Attachments are coming soon. Nothing was uploaded.");
               }

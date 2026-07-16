@@ -77,7 +77,7 @@ export const useContacts = create<ContactsState>((set, get) => ({
     if (id === gossipSdk.userId) return { ok: false, error: "That's your own ID." };
     try {
       // Fetches their key, adds the contact, AND creates+initiates the
-      // discussion. `username` rides inside the E2E announcement so the other
+      // discussion. `username` rides inside the E2EE announcement so the other
       // side names the contact after US - without it their SDK falls back to
       // "New Request N" (the bug everyone saw).
       const res = await gossipSdk.discussions.startByUserId(id, name.trim() || id.slice(0, 12), {

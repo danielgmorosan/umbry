@@ -12,7 +12,7 @@ import { truncateHandle } from "@/lib/utils";
 /**
  * Profile card popup (T3) - opens when you click someone's avatar or name.
  * Shows who they are (avatar, name, pseudonymous handle, workspace role) and
- * the two things you'd do next: message or call them (E2E, via /home).
+ * the two things you'd do next: message or call them (E2EE, via /home).
  */
 export function UserProfileDialog({
   userId,

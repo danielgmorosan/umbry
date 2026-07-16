@@ -1,7 +1,7 @@
 import { relayUrl } from "./relayBase";
 
 /**
- * Channel attachment upload (T-13). Channels only - the E2E DM path has no
+ * Channel attachment upload (T-13). Channels only - the E2EE DM path has no
  * SDK attachment support yet, and we never send DM files in the clear around
  * the crypto boundary.
  */

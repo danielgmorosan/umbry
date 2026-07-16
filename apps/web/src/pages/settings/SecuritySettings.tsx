@@ -63,7 +63,7 @@ export function SecuritySettings() {
         <SettingRow
           label={
             <span className="flex items-center gap-2">
-              Post-quantum E2E
+              Post-quantum E2EE
               <span className="inline-flex items-center gap-1 rounded-control bg-field px-2 py-0.5 text-[11px] font-medium text-positive">
                 <span className="size-1.5 rounded-full bg-positive" /> active
               </span>

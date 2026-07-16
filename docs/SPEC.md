@@ -19,7 +19,7 @@ hostable on-chain via DeWeb.
 
 We are pivoting that technology into an **enterprise team-collaboration product** — think Slack, but:
 
-- **DMs are truly private** (reuse Gossip's existing E2E 1:1 channel verbatim).
+- **DMs are truly private** (reuse Gossip's existing E2EE 1:1 channel verbatim).
 - **Channels (group chats) just need to work** for now — privacy on groups is a later upgrade,
   not a v1 blocker.
 - **Mini-apps** are docked into the workspace and chosen for privacy (mail, calendar, notes,
@@ -45,7 +45,7 @@ and integrations with privacy-respecting tools instead of Google/Microsoft.
 - **Local DB:** SQLite via `wa-sqlite` + **Drizzle ORM** (data stays on device)
 - **PWA:** Vite PWA plugin
 - **Blockchain / identity:** Massa Web3 SDK
-- **Crypto / protocol:** Rust → WASM (post-quantum E2E, ephemeral keys). Built with a Rust + zig
+- **Crypto / protocol:** Rust → WASM (post-quantum E2EE, ephemeral keys). Built with a Rust + zig
   toolchain; `npm run wasm:build` outputs to `gossip-sdk/src/assets/generated/wasm`.
 - **Native shell:** Capacitor (iOS + Android), app id `net.massa.gossip`.
 
@@ -57,7 +57,7 @@ and integrations with privacy-respecting tools instead of Google/Microsoft.
 - **AI gateway:** **OpenClaw** (self-hosted assistant gateway) running as a sidecar service.
 - **Local inference:** **Ollama** (local + optional cloud), driven by OpenClaw's model providers.
 - **Transcription (call notes):** `whisper.cpp` / faster-whisper locally; cloud STT optional.
-- **Calls/meetings:** **LiveKit** (open-source, Apache-2.0, self-hostable, E2E, AI-agent framework)
+- **Calls/meetings:** **LiveKit** (open-source, Apache-2.0, self-hostable, E2EE, AI-agent framework)
   as primary; **Jitsi Meet** as the lighter embeddable alternative. See §7.
 - **Integrations (privacy mini-apps):** built against open standards — **JMAP/IMAP/SMTP** (mail),
   **CalDAV/CardDAV** (calendar/contacts), **WebDAV** + **S3** (files) — plus self-hostable apps
@@ -116,7 +116,7 @@ gossip-workspace/
             ┌────────────────────────── apps/web (React 19 + Vite) ──────────────────────────┐
             │  Workspace shell: sidebar (workspaces, channels, DMs) | main pane | miniapp dock │
             │                                                                                  │
-   DMs ─────┼──> gossip-sdk (configureSdk + WASM crypto) ──E2E──> message-transfer protocol     │
+   DMs ─────┼──> gossip-sdk (configureSdk + WASM crypto) ──E2EE──> message-transfer protocol     │
             │        ▲ adapters: Zustand stores, Drizzle/wa-sqlite db, prefs, notifications     │
    Channels ┼──> channel service ──> relay (api.usegossip.com OR self-hosted services/relay)    │
             │                                                                                  │
@@ -130,7 +130,7 @@ gossip-workspace/
 ```
 
 **Hard privacy boundary (memorize this):**
-- **DMs** are E2E encrypted; *no server and no AI* can read them.
+- **DMs** are E2EE; *no server and no AI* can read them.
 - **Channels** are shared workspace data; the **AI bot is a workspace member with its own Gossip
   identity** and can only read channels it has been explicitly added to. **The AI never has access
   to DMs.** Recaps and notes operate only on channel content the requesting user can already see.
@@ -145,25 +145,25 @@ gossip-workspace/
   and a notification handler), then `setProtocolBaseUrl(...)`.
 - Identity = passphrase-derived Gossip identity (no PII). On desktop/mobile, gate unlock with
   Capacitor biometric auth where available.
-- Do **not** modify the crypto or the WASM bindings. Treat E2E DMs as a solved, sealed component.
+- Do **not** modify the crypto or the WASM bindings. Treat E2EE DMs as a solved, sealed component.
 
 ### 5.2 Channels (group chat) — new, "just works" for v1
 The Gossip SDK does **not** ship group messaging yet (it's on their roadmap), so we build channels
 ourselves:
-- **v1 (acceptable to be non-E2E):** channels are rooms backed by the message-transfer relay.
+- **v1 (acceptable to be non-E2EE):** channels are rooms backed by the message-transfer relay.
   Messages are persisted to the local Drizzle DB and fanned out via the relay. Transport is TLS;
-  treat channel contents as "workspace-confidential", not "E2E-private". This is the explicitly
+  treat channel contents as "workspace-confidential", not "E2EE-private". This is the explicitly
   accepted tradeoff.
 - **Privacy upgrade path (later phase, do not block v1):** per-member key fan-out using the
-  existing 1:1 E2E primitive for small channels, then migrate to **MLS (Messaging Layer Security,
-  RFC 9420)** for scalable group E2E. Leave a clean seam for this in the channel service.
+  existing 1:1 E2EE primitive for small channels, then migrate to **MLS (Messaging Layer Security,
+  RFC 9420)** for scalable group E2EE. Leave a clean seam for this in the channel service.
 - Channel types: public (any workspace member can join), private (invite-only), and DM-group
-  (small E2E group via fan-out, optional later).
+  (small E2EE group via fan-out, optional later).
 
 ### 5.3 Self-hosted relay (enterprise lever)
 `VITE_GOSSIP_API_URL` defaults to `https://api.usegossip.com`. For enterprise customers, allow
 pointing this at a self-hosted relay (`services/relay`) so the org controls message transport.
-E2E for DMs is unaffected by where the relay lives; this is purely about who runs the transport
+E2EE for DMs is unaffected by where the relay lives; this is purely about who runs the transport
 and channel store. Make the base URL a per-workspace setting.
 
 ---
@@ -240,22 +240,22 @@ never leaves the machine.
 - A **mini-app dock** in the shell launches them; each is enabled per workspace in Integrations.
 
 ### 8.2 The privacy-vs-integrability tradeoff (design principle)
-The most private tools (zero-knowledge E2E like Proton and Tuta) are closed precisely *because* of
+The most private tools (zero-knowledge E2EE like Proton and Tuta) are closed precisely *because* of
 that encryption — Tuta supports no third-party clients at all, and Proton is Bridge-only. The tools
 that integrate cleanly are either **standards-based** (JMAP/IMAP, CalDAV/CardDAV, WebDAV, S3) or
 **open-source and self-hostable**. For an enterprise privacy product the sweet spot is
 **self-hostable open source**: the customer runs the server, so they own the data *and* you get a
-real API — which is arguably more private than trusting someone else's E2E SaaS, and reinforces the
+real API — which is arguably more private than trusting someone else's E2EE SaaS, and reinforces the
 decentralization pitch. **Build every mini-app against the open protocol, not a vendor API**, so any
 compliant provider (including a customer's existing one) drops in.
 
 ### 8.3 Recommended first-wave integrations (concrete picks)
-- **Calls → LiveKit** (see §7). Self-hostable, E2E, and the AI-agent hook for the notetaker.
+- **Calls → LiveKit** (see §7). Self-hostable, E2EE, and the AI-agent hook for the notetaker.
   Jitsi as the lighter fallback; Nextcloud Talk if Nextcloud is in play.
 - **Files → Nextcloud** as the all-rounder (WebDAV + OCS API; also bundles calendar/contacts/Talk,
   so one integration can cover several surfaces). Alternatives by need:
-  **Seafile** (per-library client-side encryption — the strongest E2E of the self-hosted set, has an
-  API), **Storj** (decentralized, E2E-encrypted, S3-compatible API, ~$4/TB — on-brand with Massa),
+  **Seafile** (per-library client-side encryption — the strongest E2EE of the self-hosted set, has an
+  API), **Storj** (decentralized, E2EE, S3-compatible API, ~$4/TB — on-brand with Massa),
   and **Syncthing** (decentralized P2P sync, no central server). Avoid leaning on **ownCloud** for
   EU-sovereignty stories — it was acquired by US-based Kiteworks in late 2024.
 - **Mail → Fastmail (JMAP)** as the reference integration: it exposes **JMAP** (JSON-over-HTTP, the
@@ -266,13 +266,13 @@ compliant provider (including a customer's existing one) drops in.
 - **Calendar / Contacts → CalDAV / CardDAV.** This is the universal answer; works with Fastmail,
   Nextcloud, mailbox.org, and self-hosted **Radicale / Baïkal**. (Proton and Tuta expose neither —
   this was the hardest Proton gap.)
-- **Notes → Standard Notes or CryptPad** (E2E/privacy-focused, with APIs/embeds).
+- **Notes → Standard Notes or CryptPad** (E2EE/privacy-focused, with APIs/embeds).
 
 ### 8.4 Closed-but-private providers (handle as special cases, don't block on them)
 - **Proton Mail:** Proton Mail Bridge (official, desktop-only, paid plan) → local IMAP/SMTP, or the
   third-party `hydroxide` (IMAP/SMTP/CardDAV translator). Desktop/Tauri only. **Proton Calendar has
   no API or CalDAV — don't promise it.**
-- **Tuta:** E2E (encrypts subject lines too) but no third-party clients/API — not integrable today.
+- **Tuta:** E2EE (encrypts subject lines too) but no third-party clients/API — not integrable today.
 
 > Net: design around open standards + self-hostable apps; treat Proton/Tuta as optional desktop
 > special cases rather than API integrations. Don't burn time on APIs that don't exist.
@@ -315,7 +315,7 @@ Build the shell first, then fill panes. Route-level screens live in `apps/web/sr
 or bottom = mini-app dock; main pane = content; right = thread/AI panel)
 - `/w/:workspaceId` — workspace home / activity.
 - `/w/:workspaceId/c/:channelId` — channel (messages, threads, members, call button).
-- `/w/:workspaceId/dm/:conversationId` — 1:1 E2E DM.
+- `/w/:workspaceId/dm/:conversationId` — 1:1 E2EE DM.
 - `/w/:workspaceId/threads` — threads the user follows.
 - `/w/:workspaceId/search` — search across accessible channels.
 - `/w/:workspaceId/members` — directory.
@@ -414,10 +414,10 @@ shared `ui` package. Stub `configureSdk` adapters.
 **Phase 1 — Identity + shell.** Onboarding, identity create/unlock, workspace create/join, the
 persistent workspace shell (sidebar, panes, dock placeholders).
 
-**Phase 2 — DMs (real E2E).** Fully wire `gossip-sdk` for 1:1: send/receive, local persistence,
+**Phase 2 — DMs (real E2EE).** Fully wire `gossip-sdk` for 1:1: send/receive, local persistence,
 notifications. This proves the inherited stack end-to-end.
 
-**Phase 3 — Channels.** Build the channel service + relay-backed group messaging (non-E2E v1),
+**Phase 3 — Channels.** Build the channel service + relay-backed group messaging (non-E2EE v1),
 threads, membership, search over accessible channels.
 
 **Phase 4 — AI assistant.** `openclaw-bridge` + gateway + gossip channel plugin; recaps and
@@ -433,12 +433,12 @@ Ollama, pull model, flip routing to local, optional Claude key. Move privacy-sen
 **Storj** (decentralized S3 files), with Proton handled as the desktop-Bridge special case.
 
 **Phase 8 — Enterprise hardening.** Self-hosted relay option, admin console, roles/provisioning,
-DeWeb deployment, group-E2E upgrade path (fan-out → MLS).
+DeWeb deployment, group-E2EE upgrade path (fan-out → MLS).
 
 ---
 
 ## 14. Security & privacy model (non-negotiables)
-- **Never touch** Gossip's crypto or WASM bindings; treat E2E DMs as a sealed component.
+- **Never touch** Gossip's crypto or WASM bindings; treat E2EE DMs as a sealed component.
 - **AI never sees DMs.** The bot only reads channels it's a member of, scoped to the requester's
   access. Recaps/notes operate on already-shared channel data only.
 - **No secrets in the frontend bundle.** Model API keys live in the gateway; Bridge/keychain
@@ -446,8 +446,8 @@ DeWeb deployment, group-E2E upgrade path (fan-out → MLS).
 - **Local-first.** Persist to the on-device Drizzle/wa-sqlite DB; relay only what transport needs.
 - **Consent for capture.** Call transcription/notetaking must be explicit and visible to all
   participants.
-- **Honest privacy claims.** v1 channels are "workspace-confidential," not E2E — label them
-  accurately in UI and sales material until the group-E2E upgrade lands.
+- **Honest privacy claims.** v1 channels are "workspace-confidential," not E2EE — label them
+  accurately in UI and sales material until the group-E2EE upgrade lands.
 
 ---
 
@@ -467,8 +467,8 @@ DeWeb deployment, group-E2E upgrade path (fan-out → MLS).
 ## 16. Open decisions for the human (resolve before/while building)
 1. **Product name** (replace "Gossip Workspace").
 2. **Desktop shell:** Tauri (recommended, lighter) vs Electron.
-3. **Group-chat privacy ambition for v1:** confirm relay-backed non-E2E is acceptable (current
-   assumption) vs. attempt small-group fan-out E2E sooner.
+3. **Group-chat privacy ambition for v1:** confirm relay-backed non-E2EE is acceptable (current
+   assumption) vs. attempt small-group fan-out E2EE sooner.
 4. **Relay:** ship against `api.usegossip.com` first, or stand up `services/relay` immediately for
    the enterprise story?
 5. **First mini-app to ship:** Nextcloud (covers files+calendar+contacts in one) vs LiveKit calls

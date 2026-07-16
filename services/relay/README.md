@@ -4,9 +4,9 @@
 workspace at a **self-hosted** relay here so the org controls message transport and the channel
 store.
 
-**Important:** E2E for DMs is unaffected by where the relay lives — DMs ride the `gossip-sdk` E2E
+**Important:** E2EE for DMs is unaffected by where the relay lives — DMs ride the `gossip-sdk` E2EE
 channel verbatim. The relay only carries **channel** transport (the "workspace-confidential",
-non-E2E v1 channels), LiveKit call tokens, and OpenClaw AI jobs.
+non-E2EE v1 channels), LiveKit call tokens, and OpenClaw AI jobs.
 
 ## Deploy (Fly.io)
 

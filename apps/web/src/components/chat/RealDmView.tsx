@@ -29,14 +29,14 @@ import { cn, formatTime, truncateHandle } from "@/lib/utils";
 function E2EPill() {
   return (
     <span className="ml-1 inline-flex items-center gap-1 rounded-control bg-field px-2 py-0.5 text-[11px] font-medium text-positive">
-      <BreathingDot /> live · E2E
+      <BreathingDot /> live · E2EE
     </span>
   );
 }
 
 /**
  * Real, SDK-backed conversation. peerId === "self" → selfMessages (Notes to Self).
- * Otherwise a real 1:1 E2E DM with a contact (messages service over the relay).
+ * Otherwise a real 1:1 E2EE DM with a contact (messages service over the relay).
  */
 export function RealDmView({ peerId, peerName, embedded }: { peerId: string; peerName?: string; embedded?: boolean }) {
   const isSelf = peerId === "self";
@@ -54,7 +54,7 @@ export function RealDmView({ peerId, peerName, embedded }: { peerId: string; pee
   const stageImages = (files: FileList) => {
     const images = Array.from(files).filter((f) => f.type.startsWith("image/"));
     if (images.length < files.length) {
-      setAttachNotice("Only images can be sent in E2E DMs for now.");
+      setAttachNotice("Only images can be sent in E2EE DMs for now.");
       setTimeout(() => setAttachNotice(null), 4000);
     }
     if (images.length) setStaged((s) => [...s, ...images]);
@@ -168,7 +168,7 @@ export function RealDmView({ peerId, peerName, embedded }: { peerId: string; pee
   /**
    * Send text and/or staged images (T3). Images travel as compressed
    * data-URIs inside the encrypted message; the text rides as the first
-   * image's caption - one E2E message, rendered as image + caption.
+   * image's caption - one E2EE message, rendered as image + caption.
    */
   const send = async (text: string) => {
     if (sending) return;
@@ -275,7 +275,7 @@ export function RealDmView({ peerId, peerName, embedded }: { peerId: string; pee
           <LiveBars className="h-3.5" />
           <span className="min-w-0 truncate text-[13px] text-ink">
             <span className="font-semibold">Call in progress</span>
-            <span className="text-ink-mute"> · {liveCallCount} {liveCallCount === 1 ? "person" : "people"} · E2E</span>
+            <span className="text-ink-mute"> · {liveCallCount} {liveCallCount === 1 ? "person" : "people"} · E2EE</span>
           </span>
           <Link to={`/home/call/dm/${encodeURIComponent(peerId)}?answer=1`} className="ml-auto shrink-0">
             <span className="inline-flex items-center gap-1.5 rounded-control bg-positive px-3 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90">
@@ -311,7 +311,7 @@ export function RealDmView({ peerId, peerName, embedded }: { peerId: string; pee
           {messages.map((m, i) => {
             const mine = isSelf || m.direction === MessageDirection.OUTGOING;
             const deleted = m.type === MessageType.DELETED;
-            // T3: E2E image markers render as the image (+ optional caption).
+            // T3: E2EE image markers render as the image (+ optional caption).
             const image = !deleted ? parseImageMarker(m.content) : null;
             if (image) {
               return (
@@ -319,7 +319,7 @@ export function RealDmView({ peerId, peerName, embedded }: { peerId: string; pee
                   {!mine && <div className="w-7 shrink-0"><Avatar name={peerName || peerId} id={peerId} className="!size-7 !text-[11px]" /></div>}
                   <div className={cn("flex max-w-[68%] flex-col", mine ? "items-end" : "items-start")}>
                     <button
-                      onClick={() => useLightbox.getState().open({ src: image.dataUrl, alt: image.caption || "Shared image (E2E)" })}
+                      onClick={() => useLightbox.getState().open({ src: image.dataUrl, alt: image.caption || "Shared image (E2EE)" })}
                       className="cursor-zoom-in"
                     >
                       <img src={image.dataUrl} alt="Shared image" className="max-h-72 rounded-card border border-line object-contain" />
@@ -334,7 +334,7 @@ export function RealDmView({ peerId, peerName, embedded }: { peerId: string; pee
                         <MessageBody text={image.caption} />
                       </div>
                     )}
-                    <span className="mt-0.5 text-[10px] text-ink-faint">{formatTime(new Date(m.timestamp))} · E2E</span>
+                    <span className="mt-0.5 text-[10px] text-ink-faint">{formatTime(new Date(m.timestamp))} · E2EE</span>
                   </div>
                 </div>
               );
@@ -347,7 +347,7 @@ export function RealDmView({ peerId, peerName, embedded }: { peerId: string; pee
                   {!mine && <div className="w-7 shrink-0"><Avatar name={peerName || peerId} id={peerId} className="!size-7 !text-[11px]" /></div>}
                   <div className={cn("flex max-w-[68%] flex-col", mine ? "items-end" : "items-start")}>
                     <MessagePreviews text={m.content} e2e />
-                    <span className="mt-0.5 text-[10px] text-ink-faint">{formatTime(new Date(m.timestamp))} · E2E</span>
+                    <span className="mt-0.5 text-[10px] text-ink-faint">{formatTime(new Date(m.timestamp))} · E2EE</span>
                   </div>
                 </div>
               );
@@ -366,7 +366,7 @@ export function RealDmView({ peerId, peerName, embedded }: { peerId: string; pee
               );
             }
             const attribution = mine ? "me" : (peerName || truncateHandle(peerId, 12, 6));
-            // Edit/delete go through the gossip-sdk only (E2E control messages);
+            // Edit/delete go through the gossip-sdk only (E2EE control messages);
             // SDK enforces author-only. Not offered for Notes-to-Self (separate service).
             const canMutate = mine && !isSelf && !deleted && m.id != null;
             const actions = !deleted ? (
@@ -424,7 +424,7 @@ export function RealDmView({ peerId, peerName, embedded }: { peerId: string; pee
                       {mine && !deleted && <Check className="size-3" />}
                     </span>
                   </div>
-                  {/* E2E: previews are YouTube-only and never touch the relay. */}
+                  {/* E2EE: previews are YouTube-only and never touch the relay. */}
                   {!deleted && <MessagePreviews text={m.content} e2e />}
                 </div>
                 {!mine && actions}
@@ -441,7 +441,7 @@ export function RealDmView({ peerId, peerName, embedded }: { peerId: string; pee
           </div>
         )}
         <Composer
-          placeholder={isSelf ? "Message yourself, encrypted for real…" : `Message ${peerName || "contact"} (E2E)…`}
+          placeholder={isSelf ? "Message yourself, encrypted for real…" : `Message ${peerName || "contact"} (E2EE)…`}
           e2e
           busy={sending}
           onSend={(text) => void send(text)}

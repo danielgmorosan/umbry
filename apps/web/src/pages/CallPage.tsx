@@ -144,7 +144,7 @@ export function CallPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "token request failed");
       await useCall.getState().connect({ url: data.url, token: data.token, target, options: roomOptions, withVideo: wantVideo });
-      // T3: ring the other side over the E2E DM channel (unless we're the one answering).
+      // T3: ring the other side over the E2EE DM channel (unless we're the one answering).
       if (isDm && !answering && !sentInvite.current) {
         sentInvite.current = true;
         void sendCallSignal(peerId, "invite");
@@ -239,7 +239,7 @@ export function CallPage() {
           <span className="min-w-0 truncate text-[14px] font-semibold text-ink">
             {isDm ? `Call · ${peerName || truncateHandle(peerId, 10, 4)}` : `Huddle · #${channel?.name ?? channelId}`}
           </span>
-          <span className="ml-1 font-mono text-[10px] text-ink-faint max-md:hidden">LiveKit · E2E-capable</span>
+          <span className="ml-1 font-mono text-[10px] text-ink-faint max-md:hidden">LiveKit · E2EE-capable</span>
           <span className="ml-auto text-[11px] text-ink-faint max-md:hidden">navigating away keeps the call running</span>
         </header>
         <div className="flex min-h-0 flex-1">

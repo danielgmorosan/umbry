@@ -1,7 +1,7 @@
 /**
- * Media helpers (T3): inline image/GIF URLs, and E2E image sending for DMs.
+ * Media helpers (T3): inline image/GIF URLs, and E2EE image sending for DMs.
  *
- * DMs can't use the relay's upload store (that would leak E2E content), and
+ * DMs can't use the relay's upload store (that would leak E2EE content), and
  * the gossip-sdk has no attachment API - so DM images travel INSIDE the
  * encrypted message text as a compressed data-URI marker. Small, but truly
  * end-to-end: the image bytes get the same crypto as the words around them.
@@ -30,7 +30,7 @@ const IMG_SUFFIX = "]]";
 /** Keep encrypted messages lean - ~128KB of base64 after compression. */
 const MAX_MARKER_CHARS = 150_000;
 
-/** Image + optional caption on the line(s) after the marker - one E2E message. */
+/** Image + optional caption on the line(s) after the marker - one E2EE message. */
 export function imageMarkerBody(dataUrl: string, caption = ""): string {
   return `${IMG_PREFIX}${dataUrl}${IMG_SUFFIX}${caption ? `\n${caption}` : ""}`;
 }
@@ -49,7 +49,7 @@ export function parseImageMarker(body: string | null | undefined): { dataUrl: st
 
 /** Downscale + compress an image file until it fits in a DM marker. */
 export async function fileToDmImageDataUrl(file: File): Promise<string> {
-  if (!file.type.startsWith("image/")) throw new Error("Only images can be sent in E2E DMs for now.");
+  if (!file.type.startsWith("image/")) throw new Error("Only images can be sent in E2EE DMs for now.");
   const objectUrl = URL.createObjectURL(file);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {

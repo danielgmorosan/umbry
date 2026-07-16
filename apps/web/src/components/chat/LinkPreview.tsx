@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
  * Link previews under a message (T3), Discord-style.
  *
  * Channels: metadata comes from the relay's /unfurl (the message already
- * lives on the relay - no new exposure). DMs are E2E: their URLs are never
+ * lives on the relay - no new exposure). DMs are E2EE: their URLs are never
  * sent to the relay, so DMs only preview YouTube links - the thumbnail and
  * title come straight from YouTube (i.ytimg.com / oEmbed), touching only the
  * host the link already points at.

@@ -25,7 +25,7 @@ import { cn, truncateHandle } from "@/lib/utils";
  * Custom in-call surface (T2-06). Discord-style layout: a dark stage with a
  * compact strip of fixed-size participant tiles (a screenshare gets a large
  * focus area above the strip), the control tray below, and the text chat
- * (channel or E2E DM) docked at the bottom, full-width. The stage stays dark
+ * (channel or E2EE DM) docked at the bottom, full-width. The stage stays dark
  * in both themes - video surfaces read as a stage, not a document.
  *
  * Must render inside RoomContext.Provider (the Room lives in useCall, T-14).

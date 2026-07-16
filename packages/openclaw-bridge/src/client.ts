@@ -121,9 +121,9 @@ async function mockJob(req: AiJobRequest): Promise<AiJobResult> {
     route: req.route ?? "local",
     text:
       req.type === "recap"
-        ? "Recap (scoped to your channels): the team aligned on dark + mint theming, monospace for cryptographic identity, and distinct E2E-DM vs. confidential-channel headers."
+        ? "Recap (scoped to your channels): the team aligned on dark + mint theming, monospace for cryptographic identity, and distinct E2EE-DM vs. confidential-channel headers."
         : req.type === "notes"
-          ? "Meeting notes: 1) Relay seam shipped. 2) DMs stay E2E. Action items: add per-workspace relay URL setting."
+          ? "Meeting notes: 1) Relay seam shipped. 2) DMs stay E2EE. Action items: add per-workspace relay URL setting."
           : "Based on the channels you can access, the pricing decision was deferred pending the relay self-host doc.",
     citations: req.channelScope.slice(0, 2).map((c, i) => ({ channelId: c, messageId: `m${i}`, ts: "09:1" + i })),
     createdAt: new Date().toISOString(),

@@ -51,7 +51,7 @@ export function ChannelMembersDialog({
           <Lock className="size-4" /> {channel.name}
         </h2>
         <p className="mb-4 text-[12.5px] leading-relaxed text-ink-mute">
-          Invite-only private channel, enforced by the relay. Contents are workspace-confidential, not E2E.
+          Invite-only private channel, enforced by the relay. Contents are workspace-confidential, not E2EE.
         </p>
 
         <div className="mb-1 text-[11px] font-medium uppercase tracking-wider text-ink-faint">

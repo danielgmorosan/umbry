@@ -283,7 +283,7 @@ export function ChannelView({ embedded }: { embedded?: boolean } = {}) {
           subtitle={channel?.topic || undefined}
           badge={
             <span
-              title="Channel messages are workspace-confidential (TLS via the relay), not E2E in v1."
+              title="Channel messages are workspace-confidential (TLS via the relay), not E2EE in v1."
               className="ml-1 inline-flex items-center gap-1 rounded-control bg-field px-2 py-0.5 text-[11px] font-medium text-ink-mute max-md:hidden"
             >
               <ShieldAlert className="size-3" /> confidential
@@ -354,8 +354,8 @@ export function ChannelView({ embedded }: { embedded?: boolean } = {}) {
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-control bg-field px-2.5 py-1.5 text-[13px] text-ink-mute">
               <ShieldAlert className="size-3.5" />
               {isPrivate
-                ? "Invite-only private channel (relay-enforced). Messages are workspace-confidential, not E2E yet."
-                : "Group messages are relay-backed and workspace-confidential, not E2E yet."}
+                ? "Invite-only private channel (relay-enforced). Messages are workspace-confidential, not E2EE yet."
+                : "Group messages are relay-backed and workspace-confidential, not E2EE yet."}
             </div>
           </div>
 

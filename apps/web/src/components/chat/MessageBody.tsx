@@ -6,7 +6,7 @@ import { CodeBlock } from "./CodeBlock";
  * Minimal, safe markdown renderer for chat messages.
  * Supports **bold**, *italic*, `inline code`, and ``` fenced code blocks -
  * exactly what the composer toolbar produces. Storage stays plain markdown
- * text (transport-agnostic, E2E-safe; no rich HTML over the wire).
+ * text (transport-agnostic, E2EE-safe; no rich HTML over the wire).
  *
  * Output is built purely from React elements. Raw HTML in the input is never
  * parsed (it renders as literal text) and links are not auto-rendered, so

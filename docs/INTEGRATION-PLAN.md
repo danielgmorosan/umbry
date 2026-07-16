@@ -26,7 +26,7 @@ Everything the app does today, and which backend each piece touches. This is the
 "what has to move" when a user flips to self-hosted.
 
 **Legend — privacy class:**
-- 🟢 **E2E** — end-to-end encrypted; no server (ours or self-hosted) can read it.
+- 🟢 **E2EE** — end-to-end encrypted; no server (ours or self-hosted) can read it.
 - 🟡 **Server-visible** — plaintext to whoever runs the relay ("workspace-confidential").
 - 🔵 **Local-only** — never leaves the device.
 - 🟠 **Third-party** — a request leaves our infra entirely (proxied or direct).
@@ -40,11 +40,11 @@ Everything the app does today, and which backend each piece touches. This is the
 | **Presence & status** (online / invisible) | relay WS (`watchPresence`) | relay (in-memory) | 🟡 | Rides with the relay. Never persisted — keep it that way. |
 | **File & image attachments** | `lib/uploads.ts` → `POST /uploads` | relay disk (`uploads/`) | 🟡 | Rides with the relay; files land on org/user disk. |
 | **Voice messages** | `voiceRecorder.ts` → uploads | relay disk | 🟡 | Same as attachments. |
-| **Calls / huddles** (channel + DM, screen share, device settings) | `useCall.ts`, LiveKit client | LiveKit server (token minted by relay `POST /livekit-token`) | 🟡 media E2E-capable | Self-hosted `livekit-server` binary; relay keeps minting tokens with locally generated keys. |
+| **Calls / huddles** (channel + DM, screen share, device settings) | `useCall.ts`, LiveKit client | LiveKit server (token minted by relay `POST /livekit-token`) | 🟡 media E2EE-capable | Self-hosted `livekit-server` binary; relay keeps minting tokens with locally generated keys. |
 | **AI: recaps / notes / Q&A** | `AiSidePanel`, `AiPage` → `POST /openclaw/jobs` | relay → Ollama (`OLLAMA_URL`) | 🟡 (channel content → model) | Point `OLLAMA_URL` at localhost — the model literally runs on the user's GPU. |
 | **AI: draft rewrite** | Composer ✨ → `POST /openclaw/rewrite` | relay → Ollama, **local route only** (cloud refused server-side) | 🟡→🔵 | Already designed private: refuses non-local routes. Fully local in desktop mode. |
 | **GIF picker** | `GifPicker` → `GET /gif-search` | relay → Giphy/Tenor (keys server-side) | 🟠 proxied | Good pattern already: client IPs never hit Giphy — the relay proxies. Self-host: org's relay key, or feature hides when no key set. |
-| **Link previews** | `LinkPreview` → `GET /unfurl` | relay → target site | 🟠 proxied | Relay fetches, so the *user's* IP never touches the linked site. Channel-only by design (DM URLs never sent — would leak E2E content). |
+| **Link previews** | `LinkPreview` → `GET /unfurl` | relay → target site | 🟠 proxied | Relay fetches, so the *user's* IP never touches the linked site. Channel-only by design (DM URLs never sent — would leak E2EE content). |
 | **Avatars** | `useAvatars` (DiceBear local, custom ≤64 KB via `hello`) | local + relay member record | 🔵/🟡 | No third-party avatar CDN. Fine as-is. |
 | **Notifications** | `useNotifications`, browser Notification API | local | 🔵 | Desktop: native notifications via Electron. No push service, no APNs/FCM — nothing to self-host. |
 | **Identity** (passphrase, biometric unlock) | `useSession`, `biometricVault.ts` | local (WebAuthn / device) | 🔵 | Nothing server-side to move. Desktop upgrade: OS keychain via `safeStorage`. |
@@ -58,9 +58,9 @@ Everything the app does today, and which backend each piece touches. This is the
    `livekit-server-sdk`) already fronts channels, uploads, LiveKit tokens, AI jobs, GIF proxy, and
    unfurl. Self-hosting ≈ *running this one process somewhere else* plus its two friends (Ollama,
    livekit-server). This is why the toggle is feasible at all.
-2. **DMs are already sovereign.** They ride Gossip's decentralized network E2E — there is nothing
+2. **DMs are already sovereign.** They ride Gossip's decentralized network E2EE — there is nothing
    of ours to self-host, in any mode. Keep the SDK: the self-host audience is exactly who values
-   E2E DMs most. (Decision from 2026-07-16 discussion: SDK stays.)
+   E2EE DMs most. (Decision from 2026-07-16 discussion: SDK stays.)
 
 ---
 
@@ -74,7 +74,7 @@ Same binaries, same renderer — the modes differ only in **which base URLs the 
 - Web app on Vercel, or desktop client out of the box.
 - Relay: our Fly.io instance. LiveKit: LiveKit Cloud (or our hosted SFU). AI: our GPU (today:
   Ollama behind the Cloudflare tunnel).
-- Privacy statement (be honest in UI + marketing): *DMs E2E always; channels/files/AI prompts are
+- Privacy statement (be honest in UI + marketing): *DMs E2EE always; channels/files/AI prompts are
   workspace-confidential on our infra.*
 
 ### Mode B — Org self-host (one command on a server)
@@ -200,7 +200,7 @@ We already have the perfect primitive: every user has a **Gossip identity with a
 ### 4.6 What we deliberately do NOT build
 - No accounts/emails/phone numbers (identity = keys, always).
 - No server-side push gateway (APNs/FCM) for now — notifications stay device-local; revisit only
-  for mobile, and then via the E2E-friendly variants (encrypted payload push).
+  for mobile, and then via the E2EE-friendly variants (encrypted payload push).
 - No analytics SDKs, no third-party fonts/CDNs at runtime (fonts are bundled via `@fontsource`
   already — keep it that way).
 
@@ -308,7 +308,7 @@ Because "private" claims that overreach are how trust dies (SPEC §14: honest pr
 **Taken (2026-07-16):**
 - Electron (not Tauri) for the desktop shell.
 - One branch, CI matrix — no per-platform branches.
-- Gossip SDK **stays**; DMs remain E2E in all modes.
+- Gossip SDK **stays**; DMs remain E2EE in all modes.
 - Relay auth via Gossip-derived keypairs (no accounts/PII), challenge–response.
 
 **Open:**

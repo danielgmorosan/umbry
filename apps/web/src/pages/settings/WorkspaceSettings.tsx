@@ -62,9 +62,9 @@ export function WorkspaceSettings() {
         <div className="flex items-start gap-3 px-4 py-4">
           <ShieldAlert className="mt-0.5 size-5 shrink-0 text-ink-mute" />
           <p className="text-[13px] leading-relaxed text-ink-mute">
-            <span className="font-medium text-ink">Channels are workspace-confidential, not E2E in v1.</span>{" "}
+            <span className="font-medium text-ink">Channels are workspace-confidential, not E2EE in v1.</span>{" "}
             Transport is TLS and contents persist to the relay store. DMs remain end-to-end
-            encrypted. A group-E2E upgrade (fan-out → MLS) is on the roadmap.
+            encrypted. A group-E2EE upgrade (fan-out → MLS) is on the roadmap.
           </p>
         </div>
       </SettingGroup>

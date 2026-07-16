@@ -26,7 +26,7 @@ interface SessionState {
   /** Generate a brand-new BIP39 identity (does not open a session yet). */
   createIdentity: () => string;
   /**
-   * Open a real E2E session from a mnemonic / recovery passphrase.
+   * Open a real E2EE session from a mnemonic / recovery passphrase.
    * remember=true additionally stores it for auto-unlock on this device;
    * remember=false clears any stored one; undefined leaves it untouched.
    */

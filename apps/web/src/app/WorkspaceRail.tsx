@@ -159,7 +159,7 @@ export function WorkspaceRail() {
           body={
             confirm.kind === "delete"
               ? "This permanently deletes the workspace for EVERYONE: all channels, messages, and uploads. There is no undo."
-              : "You'll lose access to its channels until someone invites you back. Your E2E DMs are unaffected."
+              : "You'll lose access to its channels until someone invites you back. Your E2EE DMs are unaffected."
           }
           confirmLabel={confirm.kind === "delete" ? "Delete workspace" : "Leave workspace"}
           onConfirm={confirmAction}
