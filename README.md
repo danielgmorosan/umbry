@@ -1,7 +1,9 @@
 # Gossip Workspace
 
 A decentralized, privacy-first Slack competitor on Gossip's E2E messaging stack. See
-[`docs/SPEC.md`](docs/SPEC.md) for the full product spec.
+[`docs/SPEC.md`](docs/SPEC.md) for the full product spec and
+[`docs/INTEGRATION-PLAN.md`](docs/INTEGRATION-PLAN.md) for the desktop client, self-hosting, and
+security hardening plan.
 
 ## Monorepo layout (pnpm + Turborepo)
 
