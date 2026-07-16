@@ -721,6 +721,27 @@ async function runAiJob({ workspaceId, channelScope, type, prompt, requesterId }
 // The web app is deployed on a different origin (Vercel) than the relay (Fly.io), so the
 // HTTP endpoints below need CORS. WS connections aren't subject to CORS the same way.
 const CORS_ORIGIN = process.env.CORS_ORIGIN ?? "*";
+// WS origin allowlist (D2 step 3): browsers don't apply CORS to WebSocket, so a
+// page on any origin could open a socket. When CORS_ORIGIN is pinned to real
+// origins (comma-separated), reject WS upgrades from anything else. Dormant
+// while CORS_ORIGIN is "*" (default) — set CORS_ORIGIN to lock HTTP and WS at once.
+const WS_ALLOWED_ORIGINS = CORS_ORIGIN === "*" ? null : new Set(CORS_ORIGIN.split(",").map((o) => o.trim()).filter(Boolean));
+function originAllowed(origin) {
+  if (!WS_ALLOWED_ORIGINS) return true; // dormant
+  if (!origin) return true; // non-browser clients (native app, tests) send no Origin
+  return WS_ALLOWED_ORIGINS.has(origin);
+}
+
+// Privileged WS actions require a proven identity when enforcement is on. The
+// auth handshake itself (hello/authProve) and presence pings are exempt.
+const PRIVILEGED_WS_TYPES = new Set([
+  "createWorkspace", "joinWorkspace", "openWorkspace", "leaveWorkspace", "deleteWorkspace",
+  "createChannel", "joinChannel", "joinChannelPassword", "deleteChannel", "makeChannelPrivate",
+  "addChannelMember", "removeChannelMember",
+  "post", "editMessage", "deleteMessage",
+  "setRole", "banMember", "unbanMember",
+  "watchPresence", "typing", "callEndedHint",
+]);
 
 const httpServer = createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", CORS_ORIGIN);
@@ -980,10 +1001,19 @@ const httpServer = createServer(async (req, res) => {
 const wss = new WebSocketServer({ server: httpServer });
 httpServer.listen(PORT);
 console.log(
-  `[relay] http+ws on :${PORT}  (${Object.keys(db.workspaces).length} workspaces, livekit ${livekitConfigured ? "configured" : "NOT configured"}, auth ${RELAY_REQUIRE_AUTH ? "REQUIRED" : "optional"})`,
+  `[relay] http+ws on :${PORT}  (${Object.keys(db.workspaces).length} workspaces, livekit ${livekitConfigured ? "configured" : "NOT configured"}, auth ${RELAY_REQUIRE_AUTH ? "REQUIRED" : "optional"}, origin ${WS_ALLOWED_ORIGINS ? "locked" : "open"})`,
 );
 
-wss.on("connection", (ws) => {
+wss.on("connection", (ws, req) => {
+  // D2 step 3: reject cross-origin sockets when an allowlist is configured.
+  if (!originAllowed(req?.headers?.origin)) {
+    try {
+      ws.close(1008, "origin not allowed");
+    } catch {
+      /* already closing */
+    }
+    return;
+  }
   const client = { ws, userId: null, name: "Someone", wsSubs: new Set(), chSubs: new Set(), authed: false, authKey: null, authNonce: null, claimedAuthKey: null };
   clients.add(client);
 
@@ -992,6 +1022,13 @@ wss.on("connection", (ws) => {
     try {
       m = JSON.parse(raw.toString());
     } catch {
+      return;
+    }
+    // D2 step 3: with enforcement on, an unproven identity can say hello (to run
+    // the handshake) but can't take any privileged action — no posting, joining,
+    // reading channels, or role/membership changes as an unverified userId.
+    if (RELAY_REQUIRE_AUTH && !client.authed && PRIVILEGED_WS_TYPES.has(m.type)) {
+      send(ws, { type: "error", ref: m.ref, message: "Authentication required. Reload to re-establish your session." });
       return;
     }
     switch (m.type) {

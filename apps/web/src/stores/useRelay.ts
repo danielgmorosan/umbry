@@ -160,6 +160,26 @@ let relaySessionToken: string | null = null;
 // token with a late/duplicate authError.
 let authState: "idle" | "proving" | "done" = "idle";
 let lastNonceSigned: string | null = null;
+// Privileged sends wait on this until the auth handshake completes, so that with
+// enforcement on (RELAY_REQUIRE_AUTH) we never fire post/join/etc. as an
+// unproven identity. Resolved immediately when there's nothing to prove, and by
+// a fallback timeout so a non-auth relay can't hang the app.
+let authReadyP: Promise<void> = Promise.resolve();
+let fireAuthReady: (() => void) | null = null;
+function armAuthReady() {
+  authReadyP = new Promise<void>((resolve) => {
+    fireAuthReady = () => {
+      fireAuthReady = null;
+      resolve();
+    };
+  });
+}
+/** Send a privileged message once the identity handshake has completed. */
+function sendReady(obj: object) {
+  void authReadyP.then(() => {
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+  });
+}
 /** The current relay session token, or null if not yet authenticated (D2). */
 export function getRelaySessionToken(): string | null {
   return relaySessionToken;
@@ -251,8 +271,14 @@ function request<T extends RelayMsg>(payload: object): Promise<T> {
     pending.set(ref, (m) => resolve(m as T));
     const trySend = () => {
       if (ws && ws.readyState === WebSocket.OPEN) {
-        sendHello(); // ensure the server knows our identity before the request
-        ws.send(JSON.stringify({ ...payload, ref }));
+        // Wait for the identity handshake so privileged requests aren't sent
+        // (and rejected) as an unproven identity under enforcement.
+        void authReadyP.then(() => {
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            sendHello(); // ensure the server knows our identity before the request
+            ws.send(JSON.stringify({ ...payload, ref }));
+          } else setTimeout(trySend, 200);
+        });
       } else setTimeout(trySend, 200);
     };
     trySend();
@@ -280,22 +306,29 @@ export const useRelay = create<RelayState>((set, get) => ({
       relaySessionToken = null;
       authState = "idle";
       lastNonceSigned = null;
+      armAuthReady();
       sendHello();
       // Auto-heal: if we have a real display name, re-announce it as an explicit
       // profile update so the relay's member record can't stay stuck on an old
       // "user-xxxx" fallback from a hello sent before the name was set.
       if (useSession.getState().displayName) sendHello(false, true);
-      // D2: make sure the relay-auth key is derived, then re-send hello so the
-      // relay issues an auth challenge (the first hello above may have raced
-      // ahead of key derivation, e.g. on a fresh page load).
+      // D2: derive the relay-auth key (if needed), then re-send hello so the
+      // relay issues an auth challenge. authOk resolves authReadyP, unblocking
+      // privileged sends. With nothing to prove, unblock immediately; a fallback
+      // timeout unblocks anyway so a non-auth relay can't hang the app.
       const mnemonic = useSession.getState().mnemonic;
-      if (mnemonic && !authPublicKeySync()) void ensureAuthKey(mnemonic).then(() => sendHello());
-      // re-subscribe channels after a reconnect
+      if (!mnemonic) {
+        fireAuthReady?.();
+      } else {
+        if (!authPublicKeySync()) void ensureAuthKey(mnemonic).then(() => sendHello());
+        setTimeout(() => fireAuthReady?.(), 4000);
+      }
+      // re-subscribe channels after a reconnect (deferred until authed).
       const cur = get();
-      if (cur.workspace) ws?.send(JSON.stringify({ type: "openWorkspace", workspaceId: cur.workspace.id }));
+      if (cur.workspace) sendReady({ type: "openWorkspace", workspaceId: cur.workspace.id });
       for (const key of cur.joinedChannels) {
         const [workspaceId, channelId] = key.split("/");
-        ws?.send(JSON.stringify({ type: "joinChannel", workspaceId, channelId }));
+        sendReady({ type: "joinChannel", workspaceId, channelId });
       }
     };
     ws.onmessage = (ev) => {
@@ -330,9 +363,11 @@ export const useRelay = create<RelayState>((set, get) => ({
           break;
         }
         case "authOk":
-          // Identity proven; hold the session token for relay HTTP calls.
+          // Identity proven; hold the session token for relay HTTP calls and
+          // unblock any privileged sends waiting on the handshake.
           authState = "done";
           relaySessionToken = m.sessionToken ?? null;
+          fireAuthReady?.();
           break;
         case "authError":
           // Ignore once we already hold a token (a late duplicate must not
@@ -767,7 +802,7 @@ export const useRelay = create<RelayState>((set, get) => ({
       return { joinedChannels: joined };
     });
     const trySend = () => {
-      if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "joinChannel", workspaceId, channelId }));
+      if (ws && ws.readyState === WebSocket.OPEN) sendReady({ type: "joinChannel", workspaceId, channelId });
       else setTimeout(trySend, 250);
     };
     trySend();
@@ -776,18 +811,16 @@ export const useRelay = create<RelayState>((set, get) => ({
   post: (workspaceId, channelId, body, threadRootId, attachmentId, replyToId) => {
     const text = body.trim();
     if ((!text && !attachmentId) || !ws || ws.readyState !== WebSocket.OPEN) return;
-    ws.send(
-      JSON.stringify({
-        type: "post",
-        workspaceId,
-        channelId,
-        body: text,
-        threadRootId,
-        attachment: attachmentId ? { id: attachmentId } : undefined,
-        replyToId,
-        clientMsgId: crypto.randomUUID(),
-      }),
-    );
+    sendReady({
+      type: "post",
+      workspaceId,
+      channelId,
+      body: text,
+      threadRootId,
+      attachment: attachmentId ? { id: attachmentId } : undefined,
+      replyToId,
+      clientMsgId: crypto.randomUUID(),
+    });
   },
 
   sendTyping: (workspaceId, channelId) => {
@@ -796,7 +829,7 @@ export const useRelay = create<RelayState>((set, get) => ({
     if (now - (lastTypingSent.get(key) ?? 0) < 2500) return; // throttle
     lastTypingSent.set(key, now);
     if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: "typing", workspaceId, channelId }));
+      sendReady({ type: "typing", workspaceId, channelId });
     }
   },
 
@@ -805,7 +838,7 @@ export const useRelay = create<RelayState>((set, get) => ({
     const send = () => {
       if (ws && ws.readyState === WebSocket.OPEN) {
         sendHello();
-        ws.send(JSON.stringify({ type: "watchPresence", userIds }));
+        sendReady({ type: "watchPresence", userIds });
       } else setTimeout(send, 400);
     };
     send();
@@ -813,7 +846,7 @@ export const useRelay = create<RelayState>((set, get) => ({
 
   callEndedHint: (workspaceId, channelId) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: "callEndedHint", workspaceId, channelId }));
+      sendReady({ type: "callEndedHint", workspaceId, channelId });
     }
     // Optimistic: we were the last one out - don't wait for the round-trip.
     set((st) => {
@@ -827,12 +860,12 @@ export const useRelay = create<RelayState>((set, get) => ({
   editMessage: (workspaceId, channelId, messageId, body) => {
     const text = body.trim();
     if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-    ws.send(JSON.stringify({ type: "editMessage", workspaceId, channelId, messageId, body: text }));
+    sendReady({ type: "editMessage", workspaceId, channelId, messageId, body: text });
   },
 
   deleteMessage: (workspaceId, channelId, messageId) => {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    ws.send(JSON.stringify({ type: "deleteMessage", workspaceId, channelId, messageId }));
+    sendReady({ type: "deleteMessage", workspaceId, channelId, messageId });
   },
 
   // ── Roles & bans (T2-07) - enforced server-side at the relay ────────
