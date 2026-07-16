@@ -45,13 +45,14 @@ mac:
 
 linux:
   category: Network
+  # AppImage only — a single portable file that runs on any distro, no install.
+  # (The .deb target is fussier about metadata; add it back later if a friend
+  # specifically wants apt/dpkg.)
   target:
     - target: AppImage
       arch: [x64]
-    - target: deb
-      arch: [x64]
   icon: build/icon.png
-  maintainer: Gossip
+  maintainer: Gossip <noreply@usegossip.com>
 
 # GitHub Releases as the update/publish channel (used by CI on tag builds).
 publish:
