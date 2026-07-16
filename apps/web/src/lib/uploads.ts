@@ -1,4 +1,5 @@
 import { relayUrl } from "./relayBase";
+import { getRelaySessionToken } from "@/stores/useRelay";
 
 /**
  * Channel attachment upload (T-13). Channels only - the E2EE DM path has no
@@ -24,9 +25,10 @@ export async function uploadAttachment(file: File): Promise<AttachmentRef> {
   }
   if (file.size === 0) throw new Error(`"${file.name}" is empty.`);
   const q = new URLSearchParams({ name: file.name, type: file.type || "application/octet-stream" });
+  const token = getRelaySessionToken(); // D2: prove the uploader when authenticated
   const res = await fetch(relayUrl(`/uploads?${q}`), {
     method: "POST",
-    headers: { "content-type": "application/octet-stream" },
+    headers: { "content-type": "application/octet-stream", ...(token ? { authorization: `Bearer ${token}` } : {}) },
     body: file,
   });
   const data = await res.json();

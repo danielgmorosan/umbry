@@ -10,7 +10,7 @@
  */
 import { WebSocketServer } from "ws";
 import { createServer } from "node:http";
-import { randomUUID } from "node:crypto";
+import { randomUUID, randomBytes, createPublicKey, verify as edVerify } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync, mkdirSync, createReadStream } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -83,12 +83,13 @@ function readBodyBinary(req, cap) {
 }
 
 /** Persistent state. */
-let db = { workspaces: {}, messages: {} }; // workspaces[id], messages[`${wsId}/${chId}`] = []
+let db = { workspaces: {}, messages: {}, authKeys: {} }; // workspaces[id], messages[`${wsId}/${chId}`] = [], authKeys[userId]
 if (existsSync(DATA_FILE)) {
   try {
     db = JSON.parse(readFileSync(DATA_FILE, "utf8"));
     db.workspaces ??= {};
     db.messages ??= {};
+    db.authKeys ??= {}; // userId -> { key: base64 raw ed25519 pubkey, pinnedAt } (D2)
   } catch {
     /* start fresh */
   }
@@ -152,7 +153,85 @@ function save() {
   }, 400);
 }
 
-const clients = new Set(); // { ws, userId, name, wsSubs:Set, chSubs:Set }
+// ── Relay authentication (D2) ───────────────────────────────────────
+// Clients prove ownership of their userId by signing a server challenge with
+// an Ed25519 key deterministically derived from their recovery mnemonic
+// (separate from Gossip's post-quantum identity keys, which plain Node can't
+// verify — but derived from the same secret, so it's portable across devices).
+// The first proven key for a userId is PINNED (trust-on-first-use); later
+// connections must sign with the same key. This turns `hello { userId }` from
+// an unverified claim into a proof, closing the impersonation hole (F1).
+//
+// Rollout is backward compatible: a hello WITHOUT authPublicKey is served
+// exactly as before. Enforcement (rejecting unsigned/mismatched hellos and
+// requiring session tokens on HTTP endpoints) is a later, flag-gated step.
+const ED25519_SPKI_PREFIX = Buffer.from("302a300506032b6570032100", "hex"); // DER header for a raw 32-byte Ed25519 public key
+function ed25519KeyFromRaw(rawB64) {
+  let raw;
+  try {
+    raw = Buffer.from(String(rawB64), "base64");
+  } catch {
+    return null;
+  }
+  if (raw.length !== 32) return null;
+  try {
+    return createPublicKey({ key: Buffer.concat([ED25519_SPKI_PREFIX, raw]), format: "der", type: "spki" });
+  } catch {
+    return null;
+  }
+}
+function verifyEd25519(rawB64, message, sigB64) {
+  const key = ed25519KeyFromRaw(rawB64);
+  if (!key) return false;
+  let sig;
+  try {
+    sig = Buffer.from(String(sigB64), "base64");
+  } catch {
+    return false;
+  }
+  if (sig.length !== 64) return false;
+  try {
+    return edVerify(null, Buffer.from(message, "utf8"), key, sig);
+  } catch {
+    return false;
+  }
+}
+/** Canonical message a client signs to prove control of `key` for `userId`. */
+const authChallengeMessage = (userId, key, nonce) => `gossip-relay-auth:v1:${userId}:${key}:${nonce}`;
+
+// Session tokens let the authenticated WS identity carry over to stateless HTTP
+// endpoints (uploads, LiveKit tokens, AI jobs) without a second auth system.
+// In-memory + single-instance today; swap to an HMAC-signed token if the relay
+// is ever horizontally scaled.
+const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+const sessionTokens = new Map(); // token -> { userId, exp }
+function issueSessionToken(userId) {
+  const token = randomBytes(32).toString("base64url");
+  const exp = Date.now() + SESSION_TTL_MS;
+  sessionTokens.set(token, { userId, exp });
+  return { token, exp };
+}
+function userIdFromToken(token) {
+  const rec = token && sessionTokens.get(token);
+  if (!rec) return null;
+  if (rec.exp < Date.now()) {
+    sessionTokens.delete(token);
+    return null;
+  }
+  return rec.userId;
+}
+/** Resolve the proven userId from an `Authorization: Bearer <token>` header, or null. */
+function bearerUserId(req) {
+  const h = req.headers["authorization"];
+  if (!h || !h.startsWith("Bearer ")) return null;
+  return userIdFromToken(h.slice(7).trim());
+}
+setInterval(() => {
+  const now = Date.now();
+  for (const [t, r] of sessionTokens) if (r.exp < now) sessionTokens.delete(t);
+}, 60 * 60_000).unref?.();
+
+const clients = new Set(); // { ws, userId, name, wsSubs:Set, chSubs:Set, authed, authKey }
 let callAnnounce = null; // room → last token ts (T2-09 call-start announce debounce)
 
 // ── Online presence (T3) ────────────────────────────────────────────
@@ -824,7 +903,10 @@ const httpServer = createServer(async (req, res) => {
       const id = randomUUID();
       writeFileSync(join(UPLOAD_DIR, id), buf); // stored by uuid only — no user-controlled paths
       db.uploads ??= {};
-      db.uploads[id] = { name, type, size: buf.length, ts: Date.now() };
+      // D2: record the proven uploader when a session token is presented. Not
+      // yet required (backward compat) — this is the seam for per-workspace
+      // quotas and private-channel attachment binding in the enforcement step.
+      db.uploads[id] = { name, type, size: buf.length, ts: Date.now(), uploadedBy: bearerUserId(req) };
       save();
       return json(200, { id, url: `/uploads/${id}`, name, type, size: buf.length });
     } catch (e) {
@@ -862,7 +944,7 @@ console.log(
 );
 
 wss.on("connection", (ws) => {
-  const client = { ws, userId: null, name: "Someone", wsSubs: new Set(), chSubs: new Set() };
+  const client = { ws, userId: null, name: "Someone", wsSubs: new Set(), chSubs: new Set(), authed: false, authKey: null, authNonce: null, claimedAuthKey: null };
   clients.add(client);
 
   ws.on("message", (raw) => {
@@ -932,6 +1014,76 @@ wss.on("connection", (ws) => {
           }
           if (changed) save();
         }
+        // D2: if the hello presents a relay-auth public key, challenge it. The
+        // socket keeps working unauthenticated (backward compat); proving the
+        // key just pins/binds the identity and unlocks a session token.
+        const claimedKey =
+          typeof m.authPublicKey === "string" && m.authPublicKey.length > 0 && m.authPublicKey.length <= 64 ? m.authPublicKey : null;
+        if (claimedKey && !isAnon(client.userId) && !(client.authed && client.authKey === claimedKey)) {
+          // Stable nonce per (socket, key): reuse an outstanding challenge for
+          // repeated hellos so a second hello can't invalidate the nonce the
+          // client is mid-signing. Only mint a new one when the key changes.
+          if (!client.authNonce || client.claimedAuthKey !== claimedKey) {
+            client.claimedAuthKey = claimedKey;
+            client.authNonce = randomBytes(24).toString("base64url");
+          }
+          send(ws, { type: "authChallenge", nonce: client.authNonce });
+        }
+        break;
+      }
+
+      case "authProve": {
+        // D2: complete the challenge from a prior hello. The signature proves
+        // the socket holds the private key for `claimedAuthKey`; we then pin it
+        // (first time) or require it to match the pinned key.
+        const key = client.claimedAuthKey;
+        // Idempotent: a duplicate prove after we're already authed with this key
+        // just re-confirms (re-issuing the token would orphan the old one).
+        if (client.authed && key && client.authKey === key && client.sessionToken) {
+          send(ws, { type: "authOk", ref: m.ref, userId: client.userId, sessionToken: client.sessionToken, pinned: "matched" });
+          break;
+        }
+        const nonce = client.authNonce;
+        if (!nonce || !key) {
+          send(ws, { type: "authError", message: "No challenge outstanding — send a hello with authPublicKey first." });
+          break;
+        }
+        if (String(m.nonce ?? "") !== nonce) {
+          send(ws, { type: "authError", message: "Challenge mismatch." });
+          break;
+        }
+        if (!verifyEd25519(key, authChallengeMessage(client.userId, key, nonce), String(m.signature ?? ""))) {
+          client.authNonce = null; // burn the nonce; a fresh hello issues a new one
+          send(ws, { type: "authError", message: "Signature invalid." });
+          break;
+        }
+        const pinned = db.authKeys[client.userId];
+        if (pinned && pinned.key !== key) {
+          client.authNonce = null;
+          send(ws, {
+            type: "authError",
+            code: "key_mismatch",
+            message: "This identity is already bound to a different device key.",
+          });
+          break;
+        }
+        if (!pinned) {
+          db.authKeys[client.userId] = { key, pinnedAt: Date.now() };
+          save();
+        }
+        client.authed = true;
+        client.authKey = key;
+        client.authNonce = null;
+        const { token, exp } = issueSessionToken(client.userId);
+        client.sessionToken = token;
+        send(ws, {
+          type: "authOk",
+          ref: m.ref,
+          userId: client.userId,
+          sessionToken: token,
+          expiresAt: exp,
+          pinned: pinned ? "matched" : "created",
+        });
         break;
       }
 

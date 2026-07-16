@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { generateMnemonic, openSession, gossipSdk, initSdk } from "@/lib/sdk";
+import { ensureAuthKey, clearAuthKey } from "@/lib/relayAuth";
 
 type Status = "locked" | "opening" | "open" | "error";
 
@@ -77,6 +78,9 @@ export const useSession = create<SessionState>((set, get) => ({
         localStorage.removeItem(REMEMBER_KEY);
       }
       set({ status: "open", userId, mnemonic, remembered: !!localStorage.getItem(REMEMBER_KEY) });
+      // D2: derive the relay-auth key from the mnemonic now so it's ready to
+      // prove our identity on the next hello (best-effort; legacy path if not).
+      void ensureAuthKey(mnemonic);
       // The relay may already hold an anonymous socket for this tab -
       // re-announce with the real identity and refresh the open workspace so
       // membership-gated things (private channels, posting) work immediately.
@@ -116,6 +120,7 @@ export const useSession = create<SessionState>((set, get) => ({
     try {
       if (gossipSdk.isSessionOpen) await gossipSdk.closeSession();
     } finally {
+      clearAuthKey(); // D2: forget the relay-auth key on sign-out
       set({ status: "locked", userId: null, mnemonic: null, remembered: false });
     }
   },

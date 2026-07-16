@@ -4,6 +4,7 @@ import { useNotifications, mentionsUser } from "./useNotifications";
 import { useAvatars } from "./useAvatars";
 import { useStatus } from "./useStatus";
 import { relayWsUrl } from "@/lib/relayBase";
+import { ensureAuthKey, authPublicKeySync, signChallenge } from "@/lib/relayAuth";
 
 export interface ChannelMsg {
   id: string;
@@ -151,6 +152,18 @@ let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let refCounter = 0;
 const pending = new Map<string, (m: RelayMsg) => void>();
+// D2: session token issued by the relay after a proven auth handshake. Sent as
+// `Authorization: Bearer` on relay HTTP calls (uploads, LiveKit, AI) so the
+// authenticated WS identity carries over. Null until the handshake completes.
+let relaySessionToken: string | null = null;
+// Handshake state so we sign a challenge at most once and never clobber a live
+// token with a late/duplicate authError.
+let authState: "idle" | "proving" | "done" = "idle";
+let lastNonceSigned: string | null = null;
+/** The current relay session token, or null if not yet authenticated (D2). */
+export function getRelaySessionToken(): string | null {
+  return relaySessionToken;
+}
 const lastTypingSent = new Map<string, number>();
 
 interface RelayMsg {
@@ -171,6 +184,10 @@ interface RelayMsg {
   name?: string;
   online?: string[] | boolean;
   error?: string;
+  // D2 auth handshake frames.
+  nonce?: string;
+  sessionToken?: string;
+  code?: string;
 }
 
 /** Live huddle in a channel (T3): participant count + who kicked it off. */
@@ -206,7 +223,22 @@ function sendHello(clearAvatar = false, profileUpdate = false) {
   // and only when a display name is actually set) lets the relay update the
   // registered member name. A routine hello never does.
   const explicit = profileUpdate && !!s.displayName;
-  ws.send(JSON.stringify({ type: "hello", userId: s.userId, name, status, ...(explicit ? { profileUpdate: true } : {}), ...(avatar !== undefined ? { avatar } : {}) }));
+  // D2: advertise our relay-auth public key (when derived) so the relay can
+  // challenge us to prove this userId. Absent on the very first hello before
+  // the key finishes deriving — onopen re-sends once it's ready. Once we're
+  // authenticated we stop advertising it, so no further challenges are issued.
+  const authPublicKey = authState !== "done" ? (authPublicKeySync() ?? undefined) : undefined;
+  ws.send(
+    JSON.stringify({
+      type: "hello",
+      userId: s.userId,
+      name,
+      status,
+      ...(explicit ? { profileUpdate: true } : {}),
+      ...(avatar !== undefined ? { avatar } : {}),
+      ...(authPublicKey ? { authPublicKey } : {}),
+    }),
+  );
 }
 
 function request<T extends RelayMsg>(payload: object): Promise<T> {
@@ -240,11 +272,20 @@ export const useRelay = create<RelayState>((set, get) => ({
     ws = new WebSocket(wsUrl());
     ws.onopen = () => {
       set({ conn: "open" });
+      // Stale across reconnects; re-earned via the handshake.
+      relaySessionToken = null;
+      authState = "idle";
+      lastNonceSigned = null;
       sendHello();
       // Auto-heal: if we have a real display name, re-announce it as an explicit
       // profile update so the relay's member record can't stay stuck on an old
       // "user-xxxx" fallback from a hello sent before the name was set.
       if (useSession.getState().displayName) sendHello(false, true);
+      // D2: make sure the relay-auth key is derived, then re-send hello so the
+      // relay issues an auth challenge (the first hello above may have raced
+      // ahead of key derivation, e.g. on a fresh page load).
+      const mnemonic = useSession.getState().mnemonic;
+      if (mnemonic && !authPublicKeySync()) void ensureAuthKey(mnemonic).then(() => sendHello());
       // re-subscribe channels after a reconnect
       const cur = get();
       if (cur.workspace) ws?.send(JSON.stringify({ type: "openWorkspace", workspaceId: cur.workspace.id }));
@@ -265,6 +306,41 @@ export const useRelay = create<RelayState>((set, get) => ({
         pending.delete(m.ref);
       }
       switch (m.type) {
+        case "authChallenge": {
+          // D2: relay wants us to prove this userId. Sign its nonce once with
+          // our mnemonic-derived key. Ignore duplicate/stale challenges so we
+          // don't race ourselves.
+          if (authState === "done" || m.nonce === lastNonceSigned) break;
+          const userId = useSession.getState().userId;
+          const key = authPublicKeySync();
+          if (!m.nonce || !userId || !key) break;
+          authState = "proving";
+          lastNonceSigned = m.nonce;
+          const nonce = m.nonce;
+          const message = `gossip-relay-auth:v1:${userId}:${key}:${nonce}`;
+          void signChallenge(message).then((signature) => {
+            if (signature && ws && ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: "authProve", nonce, signature }));
+            }
+          });
+          break;
+        }
+        case "authOk":
+          // Identity proven; hold the session token for relay HTTP calls.
+          authState = "done";
+          relaySessionToken = m.sessionToken ?? null;
+          break;
+        case "authError":
+          // Ignore once we already hold a token (a late duplicate must not
+          // clobber it). Otherwise allow a retry on the next challenge.
+          if (authState === "done") break;
+          if (m.code === "key_mismatch") {
+            console.warn("[relay-auth] identity is bound to a different device key; this device can't prove it.");
+          }
+          authState = "idle";
+          lastNonceSigned = null;
+          relaySessionToken = null;
+          break;
         case "workspace":
         case "workspaceCreated":
           // Fresh snapshot - the relay follows with callActive events for any
