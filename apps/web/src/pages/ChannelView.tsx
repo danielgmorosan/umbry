@@ -13,6 +13,7 @@ import { Button, PasswordInput, StackToast, Tooltip } from "@umbry/ui/stack";
 import { AiSidePanel } from "@/components/chat/AiSidePanel";
 import { ThreadPanel } from "@/components/chat/ThreadPanel";
 import { ChannelMembersDialog } from "@/components/chat/ChannelMembersDialog";
+import { ReactionChips, AddReactionButton } from "@/components/chat/ReactionChips";
 import { UserProfileDialog } from "@/components/UserProfileDialog";
 import { UserAvatar as Avatar } from "@/components/UserAvatar";
 import { useRelay, type RelayChannel } from "@/stores/useRelay";
@@ -167,6 +168,7 @@ export function ChannelView({ embedded }: { embedded?: boolean } = {}) {
 
   const workspace = useRelay((s) => s.workspace);
   const channel = workspace?.channels.find((c) => c.id === channelId);
+  const nameOfMember = (id: string) => workspace?.members.find((x) => x.userId === id)?.name ?? `${id.slice(0, 10)}…`;
   const conn = useRelay((s) => s.conn);
   const messages = useRelay((s) => s.messagesByChannel[channelId]) ?? [];
   const viewing = useRelay((s) => s.presenceByChannel[channelId]) ?? 0;
@@ -431,6 +433,14 @@ export function ChannelView({ embedded }: { embedded?: boolean } = {}) {
                       {m.body && <MessagePreviews text={m.body} />}
                     </div>
                   )}
+                  {!m.deleted && (
+                    <ReactionChips
+                      reactions={m.reactions}
+                      myId={myId}
+                      nameOf={nameOfMember}
+                      onToggle={(emoji) => useRelay.getState().reactToMessage(workspaceId, channelId, m.id, emoji)}
+                    />
+                  )}
                   {stats && (
                     <button
                       onClick={() => openThread(m.id)}
@@ -450,6 +460,7 @@ export function ChannelView({ embedded }: { embedded?: boolean } = {}) {
                     shareText={`"${m.body}"\n- ${m.senderName} in #${name}\n${window.location.origin}/w/${workspaceId}/c/${channelId}`}
                     className="absolute -top-2.5 right-4 hidden group-hover:flex group-focus-within:flex"
                   >
+                    <AddReactionButton onPick={(emoji) => useRelay.getState().reactToMessage(workspaceId, channelId, m.id, emoji)} />
                     <button
                       onClick={() => startReply({ id: m.id, senderName: m.senderName, body: m.body || (m.attachment ? `📎 ${m.attachment.name}` : "") })}
                       title="Reply"

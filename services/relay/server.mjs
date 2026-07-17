@@ -738,7 +738,7 @@ const PRIVILEGED_WS_TYPES = new Set([
   "createWorkspace", "joinWorkspace", "openWorkspace", "leaveWorkspace", "deleteWorkspace",
   "createChannel", "joinChannel", "joinChannelPassword", "deleteChannel", "makeChannelPrivate",
   "addChannelMember", "removeChannelMember",
-  "post", "editMessage", "deleteMessage",
+  "post", "editMessage", "deleteMessage", "reactToMessage",
   "setRole", "banMember", "unbanMember",
   "watchPresence", "typing", "callEndedHint",
 ]);
@@ -1587,6 +1587,32 @@ wss.on("connection", (ws) => {
         }
         msg.body = body;
         msg.editedAt = Date.now();
+        save();
+        broadcastChannel(chKey, { type: "messageUpdated", workspaceId: m.workspaceId, channelId: m.channelId, message: msg });
+        break;
+      }
+
+      case "reactToMessage": {
+        // Emoji reactions (T4): toggle per user+emoji, stored on the message
+        // as { emoji: [userId, ...] } and re-fanned-out as a messageUpdated
+        // (the same event edits use, so clients replace the message in place).
+        if (isBanned(db.workspaces[m.workspaceId], client.userId)) break;
+        if (!canReadChannel(db.workspaces[m.workspaceId]?.channels?.[m.channelId] ?? null, client.userId)) break;
+        if (!client.userId || isAnon(client.userId)) break;
+        const emoji = String(m.emoji ?? "").trim().slice(0, 16);
+        if (!emoji) break;
+        const chKey = `${m.workspaceId}/${m.channelId}`;
+        const msg = (db.messages[chKey] ?? []).find((x) => x.id === m.messageId);
+        if (!msg || msg.deleted) break;
+        msg.reactions ??= {};
+        // Cap distinct emoji per message so a message can't grow unbounded.
+        if (!msg.reactions[emoji] && Object.keys(msg.reactions).length >= 20) break;
+        const users = new Set(msg.reactions[emoji] ?? []);
+        if (users.has(client.userId)) users.delete(client.userId);
+        else users.add(client.userId);
+        if (users.size === 0) delete msg.reactions[emoji];
+        else msg.reactions[emoji] = [...users];
+        if (Object.keys(msg.reactions).length === 0) delete msg.reactions;
         save();
         broadcastChannel(chKey, { type: "messageUpdated", workspaceId: m.workspaceId, channelId: m.channelId, message: msg });
         break;

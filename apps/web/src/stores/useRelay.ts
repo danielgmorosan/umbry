@@ -26,6 +26,8 @@ export interface ChannelMsg {
   deletedBy?: string | null;
   /** Inline attachment (channels only; uploaded via the relay /uploads). */
   attachment?: { id: string; url: string; name: string; type: string; size: number } | null;
+  /** Emoji reactions (T4): emoji → userIds who reacted. */
+  reactions?: Record<string, string[]>;
 }
 export interface RelayChannel {
   id: string;
@@ -139,6 +141,8 @@ interface RelayState {
   callEndedHint: (workspaceId: string, channelId: string) => void;
   editMessage: (workspaceId: string, channelId: string, messageId: string, body: string) => void;
   deleteMessage: (workspaceId: string, channelId: string, messageId: string) => void;
+  /** Toggle an emoji reaction on a channel message (T4). */
+  reactToMessage: (workspaceId: string, channelId: string, messageId: string, emoji: string) => void;
   /** Owner-only: promote/demote; permissions apply when role is "admin" (T2-07). */
   setRole: (workspaceId: string, userId: string, role: "admin" | "member", permissions?: AdminPermission[]) => Promise<{ ok: true } | { ok: false; error: string }>;
   banMember: (workspaceId: string, userId: string, reason?: string) => Promise<{ ok: true } | { ok: false; error: string }>;
@@ -855,6 +859,11 @@ export const useRelay = create<RelayState>((set, get) => ({
       delete next[channelId];
       return { activeCallByChannel: next };
     });
+  },
+
+  reactToMessage: (workspaceId, channelId, messageId, emoji) => {
+    if (!emoji.trim() || !ws || ws.readyState !== WebSocket.OPEN) return;
+    sendReady({ type: "reactToMessage", workspaceId, channelId, messageId, emoji: emoji.trim() });
   },
 
   editMessage: (workspaceId, channelId, messageId, body) => {

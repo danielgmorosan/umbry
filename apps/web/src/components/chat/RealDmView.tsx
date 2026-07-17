@@ -11,6 +11,8 @@ import { Button, StackToast, Tooltip } from "@umbry/ui/stack";
 import { UserAvatar as Avatar } from "@/components/UserAvatar";
 import { gossipSdk, SdkEventType, MessageDirection, MessageType, type Message } from "@/lib/sdk";
 import { parseCallSignal, callSignalLabel } from "@/lib/callSignals";
+import { parseDmReaction, dmReactionBody, foldDmReactions } from "@/lib/dmReactions";
+import { ReactionChips, AddReactionButton } from "@/components/chat/ReactionChips";
 import { parseImageMarker, imageMarkerBody, fileToDmImageDataUrl, isBareImageUrl } from "@/lib/media";
 import { dmRoomName } from "@/lib/call";
 import { relayUrl } from "@/lib/relayBase";
@@ -165,6 +167,31 @@ export function RealDmView({ peerId, peerName, embedded }: { peerId: string; pee
     else await gossipSdk.messages.sendText(peerId, body);
   };
 
+  // DM reactions (T4): fold marker messages into per-message reaction maps and
+  // hide the markers themselves from the thread. Not offered in Notes-to-Self.
+  const myReactorId = userId ?? "me";
+  const dmReactions = useMemo(
+    () =>
+      foldDmReactions(
+        messages,
+        (m) => m.content,
+        (m) => (isSelf || m.direction === MessageDirection.OUTGOING ? myReactorId : peerId),
+      ),
+    [messages, isSelf, myReactorId, peerId],
+  );
+  const visibleMessages = useMemo(() => messages.filter((m) => !parseDmReaction(m.content)), [messages]);
+  const toggleReaction = async (messageId: number, emoji: string) => {
+    if (isSelf || !gossipSdk.isSessionOpen) return;
+    const current = dmReactions.get(String(messageId))?.[emoji] ?? [];
+    const op = current.includes(myReactorId) ? ("del" as const) : ("add" as const);
+    try {
+      await gossipSdk.messages.sendText(peerId, dmReactionBody({ op, messageId: String(messageId), emoji }));
+    } catch (e) {
+      console.error("reaction failed", e);
+    }
+  };
+  const dmNameOf = (id: string) => (id === myReactorId ? "You" : peerName || truncateHandle(peerId, 8, 4));
+
   /**
    * Send text and/or staged images (T3). Images travel as compressed
    * data-URIs inside the encrypted message; the text rides as the first
@@ -303,12 +330,12 @@ export function RealDmView({ peerId, peerName, embedded }: { peerId: string; pee
         )}
 
         <div className="mx-auto flex max-w-3xl flex-col gap-1.5">
-          {messages.length === 0 && (
+          {visibleMessages.length === 0 && (
             <p className="py-10 text-center text-[13px] text-ink-faint">
               {isSelf ? "No notes yet. Write one below." : "No messages yet. Say hello."}
             </p>
           )}
-          {messages.map((m, i) => {
+          {visibleMessages.map((m, i) => {
             const mine = isSelf || m.direction === MessageDirection.OUTGOING;
             const deleted = m.type === MessageType.DELETED;
             // T3: E2EE image markers render as the image (+ optional caption).
@@ -387,6 +414,7 @@ export function RealDmView({ peerId, peerName, embedded }: { peerId: string; pee
                   </Tooltip>
                 )}
                 {canMutate && <ArmDeleteButton onConfirm={() => void deleteMsg(m.id!)} />}
+                {!isSelf && m.id != null && <AddReactionButton onPick={(emoji) => void toggleReaction(m.id!, emoji)} />}
               </MessageActionsBar>
             ) : null;
             if (editingId != null && editingId === m.id) {
@@ -426,6 +454,14 @@ export function RealDmView({ peerId, peerName, embedded }: { peerId: string; pee
                   </div>
                   {/* E2EE: previews are YouTube-only and never touch the relay. */}
                   {!deleted && <MessagePreviews text={m.content} e2e />}
+                  {!deleted && m.id != null && (
+                    <ReactionChips
+                      reactions={dmReactions.get(String(m.id))}
+                      myId={myReactorId}
+                      nameOf={dmNameOf}
+                      onToggle={(emoji) => void toggleReaction(m.id!, emoji)}
+                    />
+                  )}
                 </div>
                 {!mine && actions}
               </div>
