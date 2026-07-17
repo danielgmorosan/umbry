@@ -17,3 +17,6 @@ services/relay/.data.json
 
 # relay runtime upload storage
 services/relay/uploads/
+
+# vercel CLI link state (machine-local)
+.vercel
