@@ -4,6 +4,7 @@ import { syncNoiseGate, resetNoiseGate } from "@/lib/audioProcessing";
 import { playJoinBlip, playLeaveBlip, playCallEnd } from "@/lib/sounds";
 import { useAudioSettings } from "@/stores/useAudioSettings";
 import { useVideoSettings } from "@/stores/useVideoSettings";
+import { applyCameraBackground } from "@/lib/cameraBackground";
 
 // Reloading mid-call would silently drop the call - ask first (browsers show
 // their own generic wording; registering the handler is what arms the prompt).
@@ -207,6 +208,7 @@ export const useCall = create<CallState>((set, get) => {
         if (withVideo) {
           try {
             await room.localParticipant.setCameraEnabled(true);
+            void applyCameraBackground(room); // T4: blur / virtual background
           } catch {
             /* camera denied - stay voice-only */
           }
@@ -287,7 +289,9 @@ export const useCall = create<CallState>((set, get) => {
     toggleCam: async () => {
       const r = get().room;
       if (!r) return;
-      await r.localParticipant.setCameraEnabled(!get().cam);
+      const enabling = !get().cam;
+      await r.localParticipant.setCameraEnabled(enabling);
+      if (enabling) void applyCameraBackground(r); // T4: blur / virtual background
       syncLocal();
     },
     switchDevice: async (kind, deviceId) => {

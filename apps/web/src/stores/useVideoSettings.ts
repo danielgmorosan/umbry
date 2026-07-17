@@ -17,6 +17,10 @@ interface VideoSettingsState {
   shareFps: ShareFps;
   /** What the share encode optimizes for: crisp text or smooth motion. */
   sharePrioritize: "detail" | "motion";
+  /** Camera background effect (T4): none, blur, or a custom image. */
+  background: "none" | "blur" | "image";
+  /** Compressed data-URI of the custom background image. */
+  backgroundImage: string;
   set: (patch: Partial<Omit<VideoSettingsState, "set">>) => void;
 }
 
@@ -27,6 +31,8 @@ export const useVideoSettings = create<VideoSettingsState>()(
       shareRes: "source",
       shareFps: 30,
       sharePrioritize: "detail",
+      background: "none",
+      backgroundImage: "",
       set: (patch) => set(patch),
     }),
     { name: "gossip-video-settings" },

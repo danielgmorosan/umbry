@@ -5,6 +5,7 @@ import { SettingGroup, SettingRow } from "./parts";
 import { Button, Toggle } from "@umbry/ui/stack";
 import { useAudioSettings } from "@/stores/useAudioSettings";
 import { useVideoSettings, type CamPreset, type ShareRes, type ShareFps } from "@/stores/useVideoSettings";
+import { applyCameraBackground, backgroundEffectsSupported, fileToBackgroundDataUrl } from "@/lib/cameraBackground";
 import { useAdvancedAudio } from "@/stores/useAdvancedAudio";
 import { useCall } from "@/stores/useCall";
 import { syncNoiseGate, updateNoiseGate } from "@/lib/audioProcessing";
@@ -220,6 +221,62 @@ export function CallSettings() {
             />
           }
         />
+        <SettingRow
+          label="Camera background"
+          desc={
+            backgroundEffectsSupported()
+              ? "Blur or replace what's behind you. Segmentation runs entirely on this device."
+              : "Not supported by this browser (needs Chromium's insertable streams)."
+          }
+          control={
+            <QualitySelect
+              value={video.background}
+              options={[
+                ["none", "None"],
+                ["blur", "Blur"],
+                ["image", "Custom image"],
+              ]}
+              onChange={(v) => {
+                video.set({ background: v as "none" | "blur" | "image" });
+                const room = useCall.getState().room;
+                if (room) void applyCameraBackground(room);
+              }}
+            />
+          }
+        />
+        {video.background === "image" && (
+          <SettingRow
+            label="Background image"
+            desc={video.backgroundImage ? "Stored on this device only." : "Pick an image to show behind you."}
+            control={
+              <label className="flex cursor-pointer items-center gap-2.5">
+                {video.backgroundImage && (
+                  <img src={video.backgroundImage} alt="Current background" className="h-9 w-14 rounded-control border border-line object-cover" />
+                )}
+                <span className="rounded-control border border-line bg-field px-3 py-1.5 text-[13px] text-ink transition-colors hover:border-line-strong">
+                  {video.backgroundImage ? "Change…" : "Upload…"}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    void fileToBackgroundDataUrl(f)
+                      .then((dataUrl) => {
+                        video.set({ backgroundImage: dataUrl, background: "image" });
+                        const room = useCall.getState().room;
+                        if (room) void applyCameraBackground(room);
+                      })
+                      .catch(() => setError("Couldn't process that image."));
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            }
+          />
+        )}
       </SettingGroup>
 
       <SettingGroup title="Advanced: noise gate">
