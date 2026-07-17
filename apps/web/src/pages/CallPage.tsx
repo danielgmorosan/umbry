@@ -98,6 +98,12 @@ export function CallPage() {
       // WebAudio mixing: per-participant volume goes through a GainNode, so
       // the volume sliders can BOOST quiet mics past 100% (T3).
       webAudioMix: true,
+      // T4: patient reconnects. The default policy gives up long before a
+      // backgrounded mobile tab gets its JS thawed - keep trying for ~2.5min
+      // (visibility-triggered auto-rejoin in useCall covers the rest).
+      reconnectPolicy: {
+        nextRetryDelayInMs: (ctx) => (ctx.elapsedMs > 150_000 ? null : Math.min(500 * 2 ** Math.min(ctx.retryCount, 5), 10_000)),
+      },
     }),
     [audio.inputId, audio.outputId, audio.echoCancellation, audio.noiseSuppression, audio.autoGainControl],
   );
@@ -135,15 +141,22 @@ export function CallPage() {
       // existing connection with the SAME identity (DUPLICATE_IDENTITY), which
       // booted people sharing an account or joining from two tabs. The suffix
       // makes every connection unique; UI strips it back off for display.
-      const identity = `${userId ?? "guest"}#${Math.random().toString(36).slice(2, 8)}`;
-      const res = await fetch(relayUrl("/livekit-token"), {
-        method: "POST",
-        headers: { "content-type": "application/json", ...relayAuthHeader() },
-        body: JSON.stringify({ room, identity, name: displayName || "Guest" }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "token request failed");
-      await useCall.getState().connect({ url: data.url, token: data.token, target, options: roomOptions, withVideo: wantVideo });
+      // Reused by auto-rejoin (T4) to mint a fresh token after a network death.
+      const fetchConnection = async () => {
+        const identity = `${userId ?? "guest"}#${Math.random().toString(36).slice(2, 8)}`;
+        const res = await fetch(relayUrl("/livekit-token"), {
+          method: "POST",
+          headers: { "content-type": "application/json", ...relayAuthHeader() },
+          body: JSON.stringify({ room, identity, name: displayName || "Guest" }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "token request failed");
+        return { url: data.url as string, token: data.token as string };
+      };
+      const first = await fetchConnection();
+      await useCall
+        .getState()
+        .connect({ url: first.url, token: first.token, target, options: roomOptions, withVideo: wantVideo, refresh: fetchConnection });
       // T3: ring the other side over the E2EE DM channel (unless we're the one answering).
       if (isDm && !answering && !sentInvite.current) {
         sentInvite.current = true;

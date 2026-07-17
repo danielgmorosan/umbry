@@ -11,6 +11,69 @@ function guardUnload(e: BeforeUnloadEvent) {
   e.returnValue = "";
 }
 
+// ── Mobile call resilience (T4) ─────────────────────────────────────
+// Backgrounding a mobile browser freezes JS and the SFU socket dies after
+// ~a minute; idle phone-lock does the same. Two defenses:
+// 1. a screen wake lock while in a call, so the phone doesn't idle-lock
+//    itself mid-call (platforms release it on hide; we re-request on show);
+// 2. auto-rejoin with a FRESH token after an unexpected disconnect -
+//    immediately when visible, or the moment the tab is foregrounded.
+let rejoinFn: (() => Promise<void>) | null = null;
+let pendingRejoin = false;
+let rejoinAttempts = 0;
+
+function shouldAutoRejoin(reason: DisconnectReason | undefined): boolean {
+  switch (reason) {
+    // Deliberate ends and server-side removals must stay ended.
+    case DisconnectReason.CLIENT_INITIATED:
+    case DisconnectReason.DUPLICATE_IDENTITY:
+    case DisconnectReason.PARTICIPANT_REMOVED:
+    case DisconnectReason.ROOM_DELETED:
+      return false;
+    default:
+      return true;
+  }
+}
+
+async function tryRejoin(): Promise<void> {
+  const fn = rejoinFn;
+  if (!fn) return;
+  if (rejoinAttempts >= 4) {
+    rejoinFn = null;
+    return;
+  }
+  rejoinAttempts++;
+  try {
+    await fn();
+    rejoinAttempts = 0;
+  } catch {
+    setTimeout(() => void tryRejoin(), 2000 * rejoinAttempts);
+  }
+}
+
+let wakeLock: WakeLockSentinel | null = null;
+async function acquireWakeLock(): Promise<void> {
+  try {
+    if (!("wakeLock" in navigator) || useCall.getState().status === "idle") return;
+    wakeLock = await navigator.wakeLock.request("screen");
+  } catch {
+    /* unsupported or denied - not critical */
+  }
+}
+function releaseWakeLock(): void {
+  void wakeLock?.release().catch(() => {});
+  wakeLock = null;
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  void acquireWakeLock();
+  if (pendingRejoin) {
+    pendingRejoin = false;
+    void tryRejoin();
+  }
+});
+
 /**
  * Global call session (T-14). The LiveKit `Room` lives HERE - module scope,
  * above the router - so navigating between channels/DMs/settings never
@@ -48,7 +111,15 @@ interface CallState {
   /** Why the last session ended (server kick, duplicate identity, …); null after a user-initiated leave. */
   lastDisconnectReason: DisconnectReason | null;
 
-  connect: (args: { url: string; token: string; target: CallTarget; options: RoomOptions; withVideo?: boolean }) => Promise<void>;
+  connect: (args: {
+    url: string;
+    token: string;
+    target: CallTarget;
+    options: RoomOptions;
+    withVideo?: boolean;
+    /** Re-fetch a fresh connection (token) for auto-rejoin after network death (T4). */
+    refresh?: () => Promise<{ url: string; token: string }>;
+  }) => Promise<void>;
   /** Refresh the display label once the channel/contact name resolves (T3). */
   setTargetLabel: (label: string) => void;
   leave: () => Promise<void>;
@@ -77,7 +148,8 @@ export const useCall = create<CallState>((set, get) => {
     dismissScreenAudioHint: () => set({ screenAudioMissing: false }),
     lastDisconnectReason: null,
 
-    connect: async ({ url, token, target, options, withVideo }) => {
+    connect: async (args) => {
+      const { url, token, target, options, withVideo, refresh } = args;
       const cur = get();
       // Idempotent for the same target (also absorbs StrictMode double-effects).
       if (cur.status !== "idle" && sameTarget(cur.target, target)) return;
@@ -96,10 +168,14 @@ export const useCall = create<CallState>((set, get) => {
         .on(RoomEvent.ParticipantDisconnected, playLeaveBlip)
         .on(RoomEvent.Disconnected, (reason) => {
           // Covers every path out: dock Leave, in-call leave button, server kick.
-          if (reason !== undefined && reason !== DisconnectReason.CLIENT_INITIATED) {
+          const unexpected = reason !== undefined && reason !== DisconnectReason.CLIENT_INITIATED;
+          if (unexpected) {
             console.warn("[call] disconnected by server, reason:", DisconnectReason[reason] ?? reason);
           }
           if (get().room === room) {
+            // T4: network-ish deaths (backgrounded mobile tab, flaky signal)
+            // auto-rejoin instead of ending the call for good.
+            const willRejoin = unexpected && shouldAutoRejoin(reason) && !!rejoinFn;
             set({
               room: null,
               status: "idle",
@@ -112,7 +188,14 @@ export const useCall = create<CallState>((set, get) => {
             });
             resetNoiseGate();
             window.removeEventListener("beforeunload", guardUnload);
-            playCallEnd();
+            releaseWakeLock();
+            if (willRejoin) {
+              if (document.hidden) pendingRejoin = true;
+              else setTimeout(() => void tryRejoin(), 800);
+            } else {
+              rejoinFn = null;
+              playCallEnd();
+            }
           }
         });
       try {
@@ -131,6 +214,17 @@ export const useCall = create<CallState>((set, get) => {
         if (get().room === room) {
           set({ status: "connected" });
           syncLocal();
+          // T4: arm auto-rejoin (when the caller can mint fresh tokens) + keep
+          // the screen awake for the duration of the call.
+          rejoinAttempts = 0;
+          rejoinFn = refresh
+            ? async () => {
+                if (get().status !== "idle") return; // already back in
+                const fresh = await refresh();
+                await get().connect({ ...args, url: fresh.url, token: fresh.token });
+              }
+            : null;
+          void acquireWakeLock();
           // T-15: attach the noise-gate processor if enabled in settings.
           try {
             await syncNoiseGate(room);
@@ -160,6 +254,10 @@ export const useCall = create<CallState>((set, get) => {
       const room = get().room;
       const target = get().target;
       const wasAlone = !!room && room.remoteParticipants.size === 0;
+      // User-initiated: never auto-rejoin after an explicit leave (T4).
+      rejoinFn = null;
+      pendingRejoin = false;
+      releaseWakeLock();
       set({ room: null, status: "idle", target: null, mic: false, cam: false, screen: false, screenAudioMissing: false });
       resetNoiseGate();
       window.removeEventListener("beforeunload", guardUnload);
