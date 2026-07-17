@@ -3,19 +3,36 @@ import { SmilePlus } from "lucide-react";
 import { RoomEvent } from "livekit-client";
 import { useRoomContext } from "@livekit/components-react";
 import { Tooltip } from "@umbry/ui/stack";
-import { playQuack } from "@/lib/sounds";
+import { playSound, type SoundName } from "@/lib/sounds";
 import { useAudioSettings } from "@/stores/useAudioSettings";
 import { cn } from "@/lib/utils";
 
 /**
- * In-call emoji reactions (T4), Discord-style: tap to spray emoji over the
- * stage for everyone. Rides LiveKit's lossy data channel - ephemeral by
- * design, no server or store involved. 🦆 also quacks (recipients can turn
- * reaction sounds off in Settings → Calls).
+ * In-call reactions + soundboard (T4), Discord-style: tap to spray an emoji
+ * over the stage for everyone, or fire a soundboard clip that plays on every
+ * participant's machine. Rides LiveKit's lossy data channel - ephemeral, no
+ * server or store involved. Recipients can mute soundboard clips in
+ * Settings → Calls (reactionSounds).
  */
 
-const QUICK = ["👍", "❤️", "😂", "🎉", "😮", "👏", "🦆"] as const;
-const SOUND_EMOJI = new Set(["🦆"]);
+// Visual-only quick reactions.
+const REACTIONS = ["👍", "❤️", "😂", "🎉", "😮", "👏", "🔥", "💯"] as const;
+// Soundboard: emoji + a synthesized sound everyone hears.
+const SOUNDBOARD: { emoji: string; sound: SoundName; label: string }[] = [
+  { emoji: "🦆", sound: "quack", label: "Quack" },
+  { emoji: "🦗", sound: "crickets", label: "Crickets" },
+  { emoji: "👏", sound: "applause", label: "Applause" },
+  { emoji: "📣", sound: "airhorn", label: "Airhorn" },
+  { emoji: "🥁", sound: "drumroll", label: "Drumroll" },
+  { emoji: "🔔", sound: "bell", label: "Bell" },
+];
+
+interface ReactionMsg {
+  t: "callReaction";
+  emoji: string;
+  sound?: SoundName;
+}
+
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
@@ -24,10 +41,10 @@ const decoder = new TextDecoder();
 type Listener = (emoji: string) => void;
 const localListeners = new Set<Listener>();
 
-function maybePlaySound(emoji: string) {
-  if (!SOUND_EMOJI.has(emoji)) return;
+function maybePlaySound(sound: SoundName | undefined) {
+  if (!sound) return;
   if (!useAudioSettings.getState().reactionSounds) return;
-  playQuack();
+  playSound(sound);
 }
 
 /** Floating-emoji overlay; mount once inside the (relative) call stage. */
@@ -48,10 +65,10 @@ export function CallReactionOverlay() {
 
     const onData = (payload: Uint8Array) => {
       try {
-        const msg = JSON.parse(decoder.decode(payload)) as { t?: string; emoji?: string };
+        const msg = JSON.parse(decoder.decode(payload)) as Partial<ReactionMsg>;
         if (msg.t !== "callReaction" || !msg.emoji || msg.emoji.length > 16) return;
         spawn(msg.emoji);
-        maybePlaySound(msg.emoji);
+        maybePlaySound(msg.sound as SoundName | undefined);
       } catch {
         /* not ours */
       }
@@ -83,29 +100,47 @@ export function CallReactionOverlay() {
   );
 }
 
-/** Control-tray button + quick-emoji popover. Styled like CallStage's buttons. */
+/** Control-tray button + reactions/soundboard popover. */
 export function CallReactionButton() {
   const room = useRoomContext();
   const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLSpanElement>(null);
 
-  const send = (emoji: string) => {
+  // Close on outside pointer-down or Escape.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const fire = (emoji: string, sound?: SoundName) => {
     // Spam is the feature - no throttle. Lossy: dropped frames are fine.
-    void room.localParticipant
-      .publishData(encoder.encode(JSON.stringify({ t: "callReaction", emoji })), { reliable: false })
-      .catch(() => {});
+    const msg: ReactionMsg = { t: "callReaction", emoji, ...(sound ? { sound } : {}) };
+    void room.localParticipant.publishData(encoder.encode(JSON.stringify(msg)), { reliable: false }).catch(() => {});
     localListeners.forEach((l) => l(emoji));
-    maybePlaySound(emoji);
+    maybePlaySound(sound);
   };
 
   return (
-    <span className="relative">
-      <Tooltip label="React">
+    <span ref={wrapRef} className="relative">
+      <Tooltip label="React & soundboard">
         <button
+          onPointerDown={(e) => e.stopPropagation()}
           onClick={() => setOpen((v) => !v)}
-          aria-label="Send a reaction"
+          aria-label="Reactions and soundboard"
           aria-pressed={open}
           className={cn(
-            "grid size-11 place-items-center rounded-card transition-colors",
+            "grid size-11 place-items-center rounded-card transition-colors max-md:size-10",
             open ? "bg-ink text-paper hover:bg-ink-hover" : "bg-field text-ink hover:bg-line",
           )}
         >
@@ -113,18 +148,39 @@ export function CallReactionButton() {
         </button>
       </Tooltip>
       {open && (
-        <div className="absolute bottom-14 left-1/2 z-30 flex -translate-x-1/2 items-center gap-0.5 rounded-card border border-line bg-paper p-1 shadow-[var(--st-shadow-card)]">
-          {QUICK.map((e) => (
-            <button
-              key={e}
-              onClick={() => send(e)}
-              aria-label={`React ${e}`}
-              title={SOUND_EMOJI.has(e) ? "With sound" : undefined}
-              className="grid size-9 place-items-center rounded-control font-emoji text-[20px] transition-transform hover:scale-125 hover:bg-field"
-            >
-              {e}
-            </button>
-          ))}
+        <div
+          onPointerDown={(e) => e.stopPropagation()}
+          className="absolute bottom-14 left-1/2 z-30 w-64 -translate-x-1/2 rounded-card border border-line bg-paper p-2 shadow-[var(--st-shadow-card)]"
+        >
+          <div className="mb-1 px-1 text-[10px] font-semibold uppercase tracking-wider text-ink-faint">Reactions</div>
+          <div className="grid grid-cols-8 gap-0.5">
+            {REACTIONS.map((e) => (
+              <button
+                key={e}
+                onClick={() => fire(e)}
+                aria-label={`React ${e}`}
+                className="grid size-7 place-items-center rounded-control font-emoji text-[18px] transition-transform hover:scale-125 hover:bg-field"
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+          <div className="mb-1 mt-2.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+            Soundboard
+          </div>
+          <div className="grid grid-cols-3 gap-1">
+            {SOUNDBOARD.map((s) => (
+              <button
+                key={s.sound}
+                onClick={() => fire(s.emoji, s.sound)}
+                aria-label={`Play ${s.label}`}
+                className="flex flex-col items-center gap-0.5 rounded-control border border-line px-1 py-1.5 transition-colors hover:border-line-strong hover:bg-field"
+              >
+                <span className="font-emoji text-[18px]">{s.emoji}</span>
+                <span className="text-[10px] font-medium text-ink-mute">{s.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </span>

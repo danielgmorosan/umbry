@@ -1,15 +1,17 @@
 import { useEffect } from "react";
-import { Outlet, useParams, useMatch } from "react-router-dom";
+import { Outlet, Navigate, useParams, useMatch } from "react-router-dom";
 import { WorkspaceRail } from "./WorkspaceRail";
 import { ChannelSidebar } from "./ChannelSidebar";
 import { useRelay } from "@/stores/useRelay";
 import { useContactsLive } from "@/stores/useContacts";
 import { usePendingContactRedirect } from "@/lib/usePendingContactRedirect";
 import { useDmNotifications } from "@/lib/useDmNotifications";
+import { useLockGuard } from "@/lib/useLockGuard";
 import { cn } from "@/lib/utils";
 
 export function AppShell() {
   const { workspaceId } = useParams();
+  const locked = useLockGuard();
   // Discord-mobile split: at the workspace root the rail+sidebar ARE the
   // screen; a content route (channel, call, members…) takes over full-screen
   // and its header carries the back affordance. Desktop shows both, as ever.
@@ -24,6 +26,8 @@ export function AppShell() {
   useContactsLive();
   usePendingContactRedirect();
   useDmNotifications();
+
+  if (locked) return <Navigate to="/identity/unlock" replace />;
 
   return (
     <div className="relative z-10 flex h-dvh w-screen overflow-hidden bg-paper font-stack text-ink">

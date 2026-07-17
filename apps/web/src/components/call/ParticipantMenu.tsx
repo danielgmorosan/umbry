@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Track, type Participant } from "livekit-client";
-import { Volume2, VolumeX, MonitorUp } from "lucide-react";
+import { Volume2, VolumeX, MonitorUp, Video } from "lucide-react";
 import { useCallVolumes, MAX_VOLUME } from "@/stores/useCallVolumes";
 import { cn, truncateHandle } from "@/lib/utils";
 
@@ -15,11 +15,14 @@ export function ParticipantMenu({
   y,
   participant,
   onClose,
+  onCameraSettings,
 }: {
   x: number;
   y: number;
   participant: Participant;
   onClose: () => void;
+  /** Local participant only: open the in-call camera settings dialog. */
+  onCameraSettings?: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const handle = participant.identity.split("#")[0];
@@ -52,7 +55,18 @@ export function ParticipantMenu({
       >
         <div className="truncate text-[13px] font-semibold text-ink">{name}</div>
         {participant.isLocal ? (
-          <p className="mt-1 text-[12px] text-ink-mute">That's you - everyone sets their own listening volume.</p>
+          <>
+            <button
+              onClick={() => {
+                onCameraSettings?.();
+                onClose();
+              }}
+              className="mt-2 flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-[12.5px] font-medium text-ink-mute transition-colors hover:bg-field hover:text-ink"
+            >
+              <Video className="size-4" /> Camera settings
+            </button>
+            <p className="mt-1.5 px-2 text-[11.5px] text-ink-faint">Everyone sets their own listening volume.</p>
+          </>
         ) : (
           <>
             <button

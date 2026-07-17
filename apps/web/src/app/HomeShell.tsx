@@ -1,8 +1,9 @@
-import { Outlet, useMatch, useSearchParams } from "react-router-dom";
+import { Outlet, Navigate, useMatch, useSearchParams } from "react-router-dom";
 import { WorkspaceRail } from "./WorkspaceRail";
 import { DmSidebar } from "./DmSidebar";
 import { usePendingContactRedirect } from "@/lib/usePendingContactRedirect";
 import { useDmNotifications } from "@/lib/useDmNotifications";
+import { useLockGuard } from "@/lib/useLockGuard";
 import { cn } from "@/lib/utils";
 
 /**
@@ -17,11 +18,14 @@ import { cn } from "@/lib/utils";
 export function HomeShell() {
   usePendingContactRedirect();
   useDmNotifications();
+  const locked = useLockGuard();
 
   const atRoot = !!useMatch({ path: "/home", end: true });
   const [params] = useSearchParams();
   const contactsView = params.get("view") === "contacts";
   const showMain = !atRoot || contactsView;
+
+  if (locked) return <Navigate to="/identity/unlock" replace />;
 
   return (
     <div className="relative z-10 flex h-dvh w-screen overflow-hidden bg-paper font-stack text-ink">

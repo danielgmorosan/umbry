@@ -5,6 +5,7 @@ import {
   isTrackReference,
   useIsMuted,
   useIsSpeaking,
+  useRoomContext,
   useTracks,
   type TrackReferenceOrPlaceholder,
 } from "@livekit/components-react";
@@ -18,6 +19,7 @@ import { ChannelView } from "@/pages/ChannelView";
 import { RealDmView } from "@/components/chat/RealDmView";
 import { ParticipantMenu } from "./ParticipantMenu";
 import { DevicePicker } from "./DevicePicker";
+import { CameraSettingsDialog } from "./CameraSettingsDialog";
 import { useCallVolumes, effectiveMicVolume } from "@/stores/useCallVolumes";
 import { longPressProps } from "@/lib/longPress";
 import { cn, truncateHandle } from "@/lib/utils";
@@ -39,7 +41,9 @@ export function CallStage({ target }: { target: CallTarget }) {
   const { toggleMic, toggleCam, toggleScreen, leave } = useCall.getState();
   const [chatOpen, setChatOpen] = useState(true);
   const [devicesOpen, setDevicesOpen] = useState(false);
+  const [camSettingsOpen, setCamSettingsOpen] = useState(false);
   const devicesBtn = useRef<HTMLButtonElement>(null);
+  const room = useRoomContext();
   // Right-click volume menu (T3): { cursor position, whose audio }.
   const [menu, setMenu] = useState<{ x: number; y: number; participant: Participant } | null>(null);
   const openMenuAt = (x: number, y: number, participant: Participant) => setMenu({ x, y, participant });
@@ -151,7 +155,16 @@ export function CallStage({ target }: { target: CallTarget }) {
         </div>
       </div>
 
-      {menu && <ParticipantMenu x={menu.x} y={menu.y} participant={menu.participant} onClose={() => setMenu(null)} />}
+      {menu && (
+        <ParticipantMenu
+          x={menu.x}
+          y={menu.y}
+          participant={menu.participant}
+          onClose={() => setMenu(null)}
+          onCameraSettings={() => setCamSettingsOpen(true)}
+        />
+      )}
+      {camSettingsOpen && <CameraSettingsDialog room={room} onClose={() => setCamSettingsOpen(false)} />}
 
       {/* Sharer-side heads-up: this share carries NO audio (browser/picker
           choice) - better than mystery silence on the other end (T3). */}
@@ -173,31 +186,35 @@ export function CallStage({ target }: { target: CallTarget }) {
         </div>
       )}
 
-      {/* Control tray - Stack tokens (no white-on-dark blobs in dark mode). */}
-      <div className="relative flex h-16 shrink-0 items-center justify-center gap-2 border-t border-line bg-paper px-4">
+      {/* Control tray. The leave button is pinned OUTSIDE the scroll area so it
+          is always reachable - on a narrow phone the other controls scroll
+          horizontally rather than pushing Leave off-screen. */}
+      <div className="relative flex h-16 shrink-0 items-center gap-2 border-t border-line bg-paper px-3 md:px-4">
         {devicesOpen && <DevicePicker anchor={devicesBtn.current} onClose={() => setDevicesOpen(false)} />}
-        <CallButton label={mic ? "Mute microphone" : "Unmute microphone"} off={!mic} onClick={() => void toggleMic()}>
-          {mic ? <Mic className="size-5" /> : <MicOff className="size-5" />}
-        </CallButton>
-        <CallButton ref={devicesBtn} label="Audio & video devices" active={devicesOpen} onClick={() => setDevicesOpen((o) => !o)}>
-          <Settings2 className="size-5" />
-        </CallButton>
-        <CallButton label={cam ? "Turn camera off" : "Turn camera on"} off={!cam} onClick={() => void toggleCam()}>
-          {cam ? <Video className="size-5" /> : <VideoOff className="size-5" />}
-        </CallButton>
-        <CallButton label={screen ? "Stop sharing" : "Share screen"} active={screen} onClick={() => void toggleScreen()}>
-          <MonitorUp className="size-5" />
-        </CallButton>
-        <CallReactionButton />
-        <CallButton label={chatOpen ? "Hide chat" : "Show chat"} active={chatOpen} onClick={() => setChatOpen((o) => !o)}>
-          <MessageSquareText className="size-5" />
-        </CallButton>
-        <span aria-hidden className="mx-1 h-6 w-px bg-line" />
+        <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 overflow-x-auto md:gap-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <CallButton label={mic ? "Mute microphone" : "Unmute microphone"} off={!mic} onClick={() => void toggleMic()}>
+            {mic ? <Mic className="size-5" /> : <MicOff className="size-5" />}
+          </CallButton>
+          <CallButton ref={devicesBtn} label="Audio & video devices" active={devicesOpen} onClick={() => setDevicesOpen((o) => !o)}>
+            <Settings2 className="size-5" />
+          </CallButton>
+          <CallButton label={cam ? "Turn camera off" : "Turn camera on"} off={!cam} onClick={() => void toggleCam()}>
+            {cam ? <Video className="size-5" /> : <VideoOff className="size-5" />}
+          </CallButton>
+          <CallButton label={screen ? "Stop sharing" : "Share screen"} active={screen} onClick={() => void toggleScreen()}>
+            <MonitorUp className="size-5" />
+          </CallButton>
+          <CallReactionButton />
+          <CallButton label={chatOpen ? "Hide chat" : "Show chat"} active={chatOpen} onClick={() => setChatOpen((o) => !o)}>
+            <MessageSquareText className="size-5" />
+          </CallButton>
+        </div>
+        <span aria-hidden className="h-6 w-px shrink-0 bg-line" />
         <Tooltip label="Leave call">
           <button
             onClick={() => void leave()}
             aria-label="Leave call"
-            className="grid h-11 w-14 place-items-center rounded-card bg-negative text-white transition-opacity hover:opacity-90"
+            className="grid h-11 w-14 shrink-0 place-items-center rounded-card bg-negative text-white transition-opacity hover:opacity-90 max-md:w-12"
           >
             <PhoneOff className="size-5" />
           </button>
@@ -310,7 +327,7 @@ const CallButton = forwardRef<HTMLButtonElement, {
         aria-label={label}
         aria-pressed={off === undefined ? active : !off}
         className={cn(
-          "grid size-11 place-items-center rounded-card transition-colors",
+          "grid size-11 shrink-0 place-items-center rounded-card transition-colors max-md:size-10",
           off ? "bg-negative text-white hover:opacity-90" : active ? "bg-ink text-paper hover:bg-ink-hover" : "bg-field text-ink hover:bg-line",
         )}
       >

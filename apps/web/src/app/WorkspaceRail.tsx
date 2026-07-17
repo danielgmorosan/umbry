@@ -7,7 +7,6 @@ import { ContextMenu, ConfirmDialog } from "@/components/ContextMenu";
 import { StatusMenu } from "@/components/StatusMenu";
 import { useRelay, type MyWorkspace } from "@/stores/useRelay";
 import { useSession } from "@/stores/useSession";
-import { useUnlockPrompt } from "@/components/UnlockDialog";
 import { longPressProps } from "@/lib/longPress";
 import { useNotifications } from "@/stores/useNotifications";
 import { cn } from "@/lib/utils";
@@ -20,6 +19,7 @@ import { cn } from "@/lib/utils";
  */
 function QuickLockButton() {
   const sessionOpen = useSession((s) => s.status === "open");
+  const nav = useNavigate();
   const [armed, setArmed] = useState(false);
   const disarm = useRef<ReturnType<typeof setTimeout> | null>(null);
   if (!sessionOpen) return null;
@@ -32,14 +32,17 @@ function QuickLockButton() {
   const lock = () => {
     if (disarm.current) clearTimeout(disarm.current);
     setArmed(false);
-    void useSession.getState().signOut();
-    useUnlockPrompt.getState().show();
+    // Full lock: end the session/call and land on the unlock screen (biometric
+    // or passphrase). The shells also guard, so there's no way back into the
+    // app without unlocking.
+    void useSession.getState().lock();
+    nav("/identity/unlock", { replace: true });
   };
 
   return (
-    <Tooltip label={armed ? "Click again to lock" : "Lock session (double-click)"} side="right">
+    <Tooltip label={armed ? "Click again to lock" : "Lock (double-click)"} side="right">
       <button
-        aria-label="Lock session (double-click)"
+        aria-label="Lock (double-click)"
         onClick={clickOnce}
         onDoubleClick={lock}
         className={cn(

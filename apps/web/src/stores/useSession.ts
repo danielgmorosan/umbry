@@ -39,6 +39,14 @@ interface SessionState {
   forgetDevice: () => void;
   /** Warm up the SDK + WASM without opening a session. */
   warmup: () => Promise<void>;
+  /**
+   * Lock the app NOW: leave any call, close the session, and forget the
+   * device passphrase so the only way back in is biometrics or the recovery
+   * phrase. Keeps the biometric vault (unlike signOut's finality). The caller
+   * navigates to the unlock screen; the shells also guard against a locked
+   * session rendering the app.
+   */
+  lock: () => Promise<void>;
   signOut: () => Promise<void>;
   /**
    * Wipe this identity (and its account-scoped data) from THIS device and
@@ -120,6 +128,26 @@ export const useSession = create<SessionState>((set, get) => ({
   forgetDevice: () => {
     localStorage.removeItem(REMEMBER_KEY);
     set({ remembered: false });
+  },
+
+  lock: async () => {
+    // Reset local session state FIRST so the lock always takes effect even if
+    // the SDK close is slow or throws.
+    localStorage.removeItem(REMEMBER_KEY);
+    clearAuthKey();
+    set({ status: "locked", userId: null, mnemonic: null, remembered: false });
+    // End any live call - a locked app must not keep streaming your mic/cam.
+    try {
+      const { useCall } = await import("./useCall");
+      if (useCall.getState().status !== "idle") await useCall.getState().leave();
+    } catch {
+      /* best-effort */
+    }
+    try {
+      if (gossipSdk.isSessionOpen) await gossipSdk.closeSession();
+    } catch {
+      /* best-effort — local session state is already cleared */
+    }
   },
 
   signOut: async () => {

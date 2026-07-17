@@ -193,9 +193,13 @@
   .font-mono {
     font-family: var(--font-mono);
   }
-  /* Force the bundled consistent emoji set (picker glyphs). */
+  /* Emoji glyphs: prefer the platform's native COLOR emoji font first (Segoe
+     UI Emoji on Windows, Apple Color Emoji on macOS/iOS) so they always render
+     in color. The bundled Noto is a cross-platform fallback — listing it first
+     caused grey tofu boxes where the browser rendered its glyphs monochrome
+     and, since the glyph exists, never fell through to a system font. */
   .font-emoji {
-    font-family: "Noto Color Emoji", var(--font-sans);
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", var(--font-sans);
   }
   /* Code chip/block background for rendered markdown — derived from
      currentColor so it reads correctly on any bubble (ink-on-paper or
