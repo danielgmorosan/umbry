@@ -1,4 +1,4 @@
-import { Hash, Lock, AtSign, MessageSquare, Users, Phone, ShieldCheck } from "lucide-react";
+import { Hash, Lock, AtSign, MessageSquare, Users, Phone, ShieldCheck, Bell } from "lucide-react";
 import { Toggle } from "@umbry/ui/stack";
 import { SettingsPage } from "./SettingsLayout";
 import { SettingGroup, SettingRow } from "./parts";
@@ -12,6 +12,7 @@ const typeRows: { id: NotifType; icon: typeof MessageSquare; label: string; desc
   { id: "dm", icon: Lock, label: "Direct messages", desc: "New encrypted DMs. Notifications never include message content." },
   { id: "membership", icon: Users, label: "Membership", desc: "Someone joins the workspace, or you're added to a private channel." },
   { id: "call", icon: Phone, label: "Calls", desc: "A call starts in one of your channels." },
+  { id: "poke", icon: Bell, label: "Pokes 🦆", desc: "Someone pokes you for attention (plays a quack). Turn off to ignore pokes entirely." },
 ];
 
 export function NotificationsSettings() {

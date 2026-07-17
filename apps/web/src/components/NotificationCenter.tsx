@@ -11,6 +11,7 @@ const typeIcon: Record<NotifType, typeof Bell> = {
   membership: Users,
   dm: Lock,
   call: Phone,
+  poke: Bell,
 };
 
 function relTime(ts: number): string {

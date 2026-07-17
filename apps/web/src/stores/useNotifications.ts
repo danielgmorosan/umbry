@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { playChime, playCallChime } from "@/lib/sounds";
+import { playChime, playCallChime, playQuack } from "@/lib/sounds";
 
 /**
  * In-app notification layer (T2-09).
@@ -14,7 +14,7 @@ import { playChime, playCallChime } from "@/lib/sounds";
  * Preferences (types, mutes, OS, sound) persist to localStorage; the inbox
  * itself is session-scoped.
  */
-export type NotifType = "message" | "mention" | "membership" | "dm" | "call";
+export type NotifType = "message" | "mention" | "membership" | "dm" | "call" | "poke";
 
 export interface AppNotification {
   id: string;
@@ -39,7 +39,7 @@ interface NotifPrefs {
 
 const PREFS_KEY = "gossip-notif-prefs";
 const defaultPrefs: NotifPrefs = {
-  types: { message: true, mention: true, membership: true, dm: true, call: true },
+  types: { message: true, mention: true, membership: true, dm: true, call: true, poke: true },
   mutedChannels: [],
   mutedDms: [],
   os: false,
@@ -47,7 +47,9 @@ const defaultPrefs: NotifPrefs = {
 };
 function loadPrefs(): NotifPrefs {
   try {
-    return { ...defaultPrefs, ...JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}") };
+    const stored = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}") as Partial<NotifPrefs>;
+    // Deep-merge `types` so prefs saved before a type existed keep its default.
+    return { ...defaultPrefs, ...stored, types: { ...defaultPrefs.types, ...(stored.types ?? {}) } };
   } catch {
     return defaultPrefs;
   }
@@ -127,9 +129,12 @@ export const useNotifications = create<NotificationsState>((set, get) => {
       if (n.channelId && prefs.mutedChannels.includes(n.channelId)) return;
       if (n.peerId && prefs.mutedDms.includes(n.peerId)) return;
       // Suppress for the conversation currently on screen - it's already read.
+      // Pokes are exempt: their whole job is grabbing attention wherever you are.
       const path = window.location.pathname;
-      if (n.channelId && path.includes(`/c/${n.channelId}`)) return;
-      if (n.peerId && path.includes(`/dm/${encodeURIComponent(n.peerId)}`)) return;
+      if (n.type !== "poke") {
+        if (n.channelId && path.includes(`/c/${n.channelId}`)) return;
+        if (n.peerId && path.includes(`/dm/${encodeURIComponent(n.peerId)}`)) return;
+      }
 
       const item: AppNotification = { ...n, id: crypto.randomUUID(), ts: n.ts ?? Date.now(), read: false };
       set((st) => ({
@@ -141,7 +146,7 @@ export const useNotifications = create<NotificationsState>((set, get) => {
         unreadByDm: n.peerId ? { ...st.unreadByDm, [n.peerId]: (st.unreadByDm[n.peerId] ?? 0) + 1 } : st.unreadByDm,
       }));
 
-      if (prefs.sound) (n.type === "call" ? playCallChime : playChime)();
+      if (prefs.sound) (n.type === "call" ? playCallChime : n.type === "poke" ? playQuack : playChime)();
       // OS notification only when the tab isn't visible (in-app toast covers the rest).
       if (prefs.os && document.hidden) {
         void showOsNotification(item.title, item.body, item.link, item.id);

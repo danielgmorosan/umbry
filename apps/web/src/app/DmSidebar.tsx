@@ -11,6 +11,9 @@ import { NewDmDialog } from "@/components/chat/NewDmDialog";
 import { CallSidebarPanel } from "@/components/CallDock";
 import { useUnlockPrompt } from "@/components/UnlockDialog";
 import { BreathingDot } from "@/components/LiveIndicators";
+import { ContextMenu } from "@/components/ContextMenu";
+import { UserProfileDialog } from "@/components/UserProfileDialog";
+import { longPressProps } from "@/lib/longPress";
 import { Row, GroupLabel } from "./ChannelSidebar";
 
 /** Unread pill for a DM row (T2-09). */
@@ -32,6 +35,9 @@ export function DmSidebar() {
   const { dmId } = useParams();
   const [showDm, setShowDm] = useState(true);
   const [newDm, setNewDm] = useState(false);
+  // Right-click / long-press a contact (T4): poke or open their profile.
+  const [ctx, setCtx] = useState<{ x: number; y: number; id: string; name: string } | null>(null);
+  const [profile, setProfile] = useState<{ id: string; name: string } | null>(null);
 
   const sessionStatus = useSession((s) => s.status);
   const contacts = useContacts((s) => s.contacts);
@@ -79,12 +85,21 @@ export function DmSidebar() {
         )}
         {showDm &&
           contacts.map((c) => (
-            <Row key={c.userId} to={`/home/dm/${encodeURIComponent(c.userId)}`} active={dmId === c.userId}>
-              <Avatar name={c.name} id={c.userId} size="sm" presence />
-              <span className="min-w-0 flex-1 truncate">{c.name}</span>
-              <DmUnreadBadge peerId={c.userId} />
-              <ShieldCheck className="size-3 shrink-0 text-positive/70" />
-            </Row>
+            <div
+              key={c.userId}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setCtx({ x: e.clientX, y: e.clientY, id: c.userId, name: c.name });
+              }}
+              {...longPressProps((x, y) => setCtx({ x, y, id: c.userId, name: c.name }))}
+            >
+              <Row to={`/home/dm/${encodeURIComponent(c.userId)}`} active={dmId === c.userId}>
+                <Avatar name={c.name} id={c.userId} size="sm" presence />
+                <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                <DmUnreadBadge peerId={c.userId} />
+                <ShieldCheck className="size-3 shrink-0 text-positive/70" />
+              </Row>
+            </div>
           ))}
         {showDm && contacts.length === 0 && (
           <button onClick={() => setNewDm(true)} className="mt-1 flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-[13px] text-ink-faint hover:bg-field hover:text-ink">
@@ -109,6 +124,27 @@ export function DmSidebar() {
       {/* Live call panel - pinned to the sidebar bottom while in a call, Discord-style. */}
       <CallSidebarPanel />
 
+      {ctx && (
+        <ContextMenu
+          x={ctx.x}
+          y={ctx.y}
+          header={ctx.name}
+          onClose={() => setCtx(null)}
+          items={[
+            {
+              label: "Poke 🦆",
+              icon: <span aria-hidden className="text-[14px] leading-none">🦆</span>,
+              onClick: () => useRelay.getState().poke(ctx.id),
+            },
+            {
+              label: "View profile",
+              icon: <Users className="size-4" />,
+              onClick: () => setProfile({ id: ctx.id, name: ctx.name }),
+            },
+          ]}
+        />
+      )}
+      {profile && <UserProfileDialog userId={profile.id} name={profile.name} onClose={() => setProfile(null)} />}
       {newDm && <NewDmDialog onClose={() => setNewDm(false)} />}
     </aside>
   );

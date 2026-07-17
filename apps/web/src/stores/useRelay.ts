@@ -143,6 +143,8 @@ interface RelayState {
   deleteMessage: (workspaceId: string, channelId: string, messageId: string) => void;
   /** Toggle an emoji reaction on a channel message (T4). */
   reactToMessage: (workspaceId: string, channelId: string, messageId: string, emoji: string) => void;
+  /** Poke someone who shares a workspace with you - quacks on their end (T4). */
+  poke: (userId: string) => void;
   /** Owner-only: promote/demote; permissions apply when role is "admin" (T2-07). */
   setRole: (workspaceId: string, userId: string, role: "admin" | "member", permissions?: AdminPermission[]) => Promise<{ ok: true } | { ok: false; error: string }>;
   banMember: (workspaceId: string, userId: string, reason?: string) => Promise<{ ok: true } | { ok: false; error: string }>;
@@ -212,6 +214,8 @@ interface RelayMsg {
   name?: string;
   online?: string[] | boolean;
   error?: string;
+  /** Poke sender (T4). */
+  from?: string;
   // D2 auth handshake frames.
   nonce?: string;
   sessionToken?: string;
@@ -565,6 +569,19 @@ export const useRelay = create<RelayState>((set, get) => ({
             }
           }
           break;
+        case "poked":
+          // T4: someone wants your attention. The notification store applies
+          // the Pokes preference and mutes, and plays the quack.
+          if (m.from) {
+            useNotifications.getState().notify({
+              type: "poke",
+              title: `${m.name || "Someone"} poked you 🦆`,
+              body: "Quack. They want your attention.",
+              link: `/home/dm/${encodeURIComponent(m.from)}`,
+              peerId: m.from,
+            });
+          }
+          break;
         case "messageUpdated":
           // Edit or soft-delete fan-out: replace the message in place.
           if (m.message) {
@@ -864,6 +881,12 @@ export const useRelay = create<RelayState>((set, get) => ({
   reactToMessage: (workspaceId, channelId, messageId, emoji) => {
     if (!emoji.trim() || !ws || ws.readyState !== WebSocket.OPEN) return;
     sendReady({ type: "reactToMessage", workspaceId, channelId, messageId, emoji: emoji.trim() });
+  },
+
+  poke: (userId) => {
+    get().connect();
+    sendHello();
+    sendReady({ type: "poke", userId });
   },
 
   editMessage: (workspaceId, channelId, messageId, body) => {

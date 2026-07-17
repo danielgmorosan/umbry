@@ -740,7 +740,7 @@ const PRIVILEGED_WS_TYPES = new Set([
   "addChannelMember", "removeChannelMember",
   "post", "editMessage", "deleteMessage", "reactToMessage",
   "setRole", "banMember", "unbanMember",
-  "watchPresence", "typing", "callEndedHint",
+  "watchPresence", "typing", "callEndedHint", "poke",
 ]);
 
 // Real client IP behind Fly's proxy (req.socket.remoteAddress is the proxy).
@@ -1589,6 +1589,22 @@ wss.on("connection", (ws) => {
         msg.editedAt = Date.now();
         save();
         broadcastChannel(chKey, { type: "messageUpdated", workspaceId: m.workspaceId, channelId: m.channelId, message: msg });
+        break;
+      }
+
+      case "poke": {
+        // T4: attention ping ("poke") - plays a duck on the other end.
+        // Deliberately spammable (that's the joke); allowed only between
+        // users who share a workspace, and the RECEIVING client decides
+        // whether to show/quack (Settings → Notifications → Pokes).
+        if (!client.userId || isAnon(client.userId)) break;
+        const targetId = String(m.userId ?? "");
+        if (!targetId || targetId === client.userId) break;
+        const shared = Object.values(db.workspaces).some(
+          (w) => w.members?.[client.userId] && w.members?.[targetId],
+        );
+        if (!shared) break;
+        sendToUser(targetId, { type: "poked", from: client.userId, name: client.name });
         break;
       }
 

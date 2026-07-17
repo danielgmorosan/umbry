@@ -28,6 +28,7 @@ export function UserProfileDialog({
   const contact = useContacts((s) => s.contacts.find((c) => c.userId === userId));
   const startDm = useStartDm();
   const [copied, setCopied] = useState(false);
+  const [poked, setPoked] = useState(0);
   const me = userId === myId;
 
   // Nickname (T3): your local label for this contact - SDK-persisted, shows
@@ -109,7 +110,7 @@ export function UserProfileDialog({
           </div>
 
           {!me && (
-            <div className="mt-5 grid w-full grid-cols-2 gap-2">
+            <div className="mt-5 grid w-full grid-cols-3 gap-2">
               <Button
                 variant="secondary"
                 onClick={() => {
@@ -124,6 +125,16 @@ export function UserProfileDialog({
                   <Phone className="size-4" /> Call
                 </Button>
               </Link>
+              <Button
+                variant="secondary"
+                title="Quacks on their machine. Spam responsibly."
+                onClick={() => {
+                  useRelay.getState().poke(userId);
+                  setPoked((n) => n + 1);
+                }}
+              >
+                <span aria-hidden>🦆</span> {poked > 1 ? `Poked ×${poked}` : poked === 1 ? "Poked!" : "Poke"}
+              </Button>
             </div>
           )}
         </div>

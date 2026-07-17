@@ -81,6 +81,35 @@ export function playCallEnd() {
   note(c, 330, t + 0.12, 0.3, 0.06); // E4
 }
 
+/** One synthesized duck quack: sawtooth with a falling pitch bend through a bandpass. */
+function quack(c: AudioContext, at: number, base: number) {
+  const osc = c.createOscillator();
+  const gain = c.createGain();
+  const bp = c.createBiquadFilter();
+  osc.type = "sawtooth";
+  osc.frequency.setValueAtTime(base, at);
+  osc.frequency.exponentialRampToValueAtTime(base * 0.55, at + 0.18);
+  bp.type = "bandpass";
+  bp.frequency.value = 900;
+  bp.Q.value = 2.5;
+  gain.gain.setValueAtTime(0.0001, at);
+  gain.gain.exponentialRampToValueAtTime(0.16, at + 0.02);
+  gain.gain.setValueAtTime(0.16, at + 0.12);
+  gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.2);
+  osc.connect(bp).connect(gain).connect(c.destination);
+  osc.start(at);
+  osc.stop(at + 0.25);
+}
+
+/** Poke (T4): a cheeky double quack. 🦆 */
+export function playQuack() {
+  const c = audioCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  quack(c, t, 540);
+  quack(c, t + 0.26, 480);
+}
+
 let ringTimer: ReturnType<typeof setInterval> | null = null;
 
 /** One "brrring" burst: two close tones beating against each other. */
