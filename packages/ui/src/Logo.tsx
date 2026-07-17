@@ -1,7 +1,7 @@
 import { clsx } from "clsx";
 
-/** The Gossip skull mascot. Renders the dark glyph on a mint field by default. */
-export function GossipMark({
+/** The Umbry skull mascot. Renders the dark glyph on a mint field by default. */
+export function UmbryMark({
   size = 32,
   className,
   rounded = "rounded-[28%]",
@@ -42,7 +42,7 @@ export function GossipMark({
 }
 
 /** Full lockup: mark + wordmark. */
-export function GossipLogo({
+export function UmbryLogo({
   size = 32,
   showWordmark = true,
   subtitle,
@@ -55,14 +55,14 @@ export function GossipLogo({
 }) {
   return (
     <div className={clsx("flex items-center gap-2.5", className)}>
-      <GossipMark size={size} className="glow-accent" />
+      <UmbryMark size={size} className="glow-accent" />
       {showWordmark && (
         <div className="leading-none">
           <div
             className="font-display font-bold tracking-tight text-text"
             style={{ fontSize: size * 0.58 }}
           >
-            Gossip
+            Umbry
           </div>
           {subtitle && (
             <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.22em] text-faint">

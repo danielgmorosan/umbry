@@ -4,8 +4,8 @@ import { cn } from "../utils";
 const MARK_PATH =
   "M9.5 4.5h25c4.7 0 8.5 3.8 8.5 8.5v16.8c0 4.7-3.8 8.5-8.5 8.5H20.2L10 47.5V38H9.5c-4.7 0-8.5-3.8-8.5-8.5V13c0-4.7 3.8-8.5 8.5-8.5Z";
 
-/** Inline gossip speech-bubble mark — avoids CSS-mask SVG loading issues. */
-export function GossipMarkGraphic({
+/** Inline Umbry speech-bubble mark — avoids CSS-mask SVG loading issues. */
+export function UmbryMarkGraphic({
   className,
   style,
 }: {
@@ -32,12 +32,12 @@ export function GossipMarkGraphic({
   );
 }
 
-/** Staggered tile of gossip marks, faded toward the centre so content stays legible. */
-function GossipMarkPattern() {
+/** Staggered tile of brand marks, faded toward the centre so content stays legible. */
+function UmbryMarkPattern() {
   const uid = useId().replace(/:/g, "");
-  const patternId = `gossip-tile-${uid}`;
-  const maskId = `gossip-fade-${uid}`;
-  const gradientId = `gossip-fade-grad-${uid}`;
+  const patternId = `umbry-tile-${uid}`;
+  const maskId = `umbry-fade-${uid}`;
+  const gradientId = `umbry-fade-grad-${uid}`;
 
   const mark = (
     <g transform="scale(0.5)">
@@ -86,7 +86,7 @@ function GossipMarkPattern() {
 
 /**
  * Decorative brand panel for the right half of auth screens: a soft
- * diagonal wash with a subtle gossip-mark tile and room for showcase
+ * diagonal wash with a subtle brand-mark tile and room for showcase
  * content (cards, product shots) in the middle.
  */
 export function DecorPanel({
@@ -107,7 +107,7 @@ export function DecorPanel({
         className,
       )}
     >
-      <GossipMarkPattern />
+      <UmbryMarkPattern />
       {/* Green brand ambience (T3): two soft mint glows drifting off the
           corners - ties the decor panel to the app's positive accent without
           shouting. */}

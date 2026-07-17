@@ -4,7 +4,7 @@ import { DisconnectReason, RoomEvent, type RoomOptions } from "livekit-client";
 import { Video, Loader2, ServerCog, ArrowLeft } from "lucide-react";
 import "@livekit/components-styles";
 import { RoomContext } from "@livekit/components-react";
-import { Button } from "@gossip/ui/stack";
+import { Button } from "@umbry/ui/stack";
 import { CallStage } from "@/components/call/CallStage";
 import { useSession } from "@/stores/useSession";
 import { useRelay, relayAuthHeader } from "@/stores/useRelay";

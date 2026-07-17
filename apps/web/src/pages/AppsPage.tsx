@@ -1,7 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { Mail, Calendar, FileText, NotebookPen, Video, ShieldCheck } from "lucide-react";
 import { PaneHeader } from "@/components/chat/PaneHeader";
-import { Button } from "@gossip/ui/stack";
+import { Button } from "@umbry/ui/stack";
 
 const apps = [
   { id: "mail", icon: Mail, name: "Mail", provider: "JMAP / IMAP", desc: "Inbox, threads, send to channel." },

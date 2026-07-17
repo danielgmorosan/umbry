@@ -2,7 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import { Mail, Calendar, FileText, NotebookPen, Video, Lock, Settings2 } from "lucide-react";
 import { PaneHeader, HeaderIconButton } from "@/components/chat/PaneHeader";
 import { BackButton } from "@/components/BackButton";
-import { Button, PaneEmptyState } from "@gossip/ui/stack";
+import { Button, PaneEmptyState } from "@umbry/ui/stack";
 
 const meta: Record<string, { icon: typeof Mail; name: string; provider: string }> = {
   mail: { icon: Mail, name: "Mail", provider: "JMAP / IMAP" },

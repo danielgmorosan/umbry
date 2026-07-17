@@ -1,9 +1,9 @@
 /**
- * Gossip desktop — Electron main process.
+ * Umbry desktop — Electron main process.
  *
  * D1: a hardened shell that loads the existing web app in a BrowserWindow.
  * By default it points at the deployed web app (whose origin the relay already
- * allowlists); set GOSSIP_DESKTOP_URL to run against a local dev server
+ * allowlists); set UMBRY_DESKTOP_URL to run against a local dev server
  * (http://localhost:5173) or, later, a bundled local build.
  *
  * Security posture (see also preload.ts):
@@ -19,7 +19,7 @@
 import { app, BrowserWindow, shell } from "electron";
 import * as path from "node:path";
 
-const APP_URL = process.env.GOSSIP_DESKTOP_URL ?? "https://gossip-enterpise.vercel.app";
+const APP_URL = process.env.UMBRY_DESKTOP_URL ?? "https://umbry.chat";
 
 function appOrigin(): string | null {
   try {
@@ -42,7 +42,7 @@ if (!app.requestSingleInstanceLock()) {
       minWidth: 900,
       minHeight: 600,
       backgroundColor: "#0b0b0f",
-      title: "Gossip",
+      title: "Umbry",
       show: false,
       autoHideMenuBar: true,
       webPreferences: {

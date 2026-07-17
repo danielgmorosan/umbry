@@ -9,7 +9,7 @@ import { isBareImageUrl } from "@/lib/media";
 import { MessageActionsBar, ArmDeleteButton, EditBox } from "@/components/chat/MessageActionsBar";
 import { AttachmentView } from "@/components/chat/AttachmentView";
 import { uploadAttachment } from "@/lib/uploads";
-import { Button, PasswordInput, StackToast, Tooltip } from "@gossip/ui/stack";
+import { Button, PasswordInput, StackToast, Tooltip } from "@umbry/ui/stack";
 import { AiSidePanel } from "@/components/chat/AiSidePanel";
 import { ThreadPanel } from "@/components/chat/ThreadPanel";
 import { ChannelMembersDialog } from "@/components/chat/ChannelMembersDialog";
@@ -313,7 +313,7 @@ export function ChannelView({ embedded }: { embedded?: boolean } = {}) {
                   <HeaderIconButton label="Members"><Users className="size-4" /></HeaderIconButton>
                 </Link>
               )}
-              <HeaderIconButton label="Ask Gossip AI" active={aiOpen} onClick={() => { setAiOpen((v) => !v); if (!aiOpen) openThread(null); }}>
+              <HeaderIconButton label="Ask Umbry AI" active={aiOpen} onClick={() => { setAiOpen((v) => !v); if (!aiOpen) openThread(null); }}>
                 <Sparkles className="size-4" />
               </HeaderIconButton>
             </>

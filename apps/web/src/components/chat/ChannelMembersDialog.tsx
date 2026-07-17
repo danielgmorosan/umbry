@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Lock, UserPlus, UserMinus, Loader2 } from "lucide-react";
-import { Button, StackModal, ModalBody, Tooltip } from "@gossip/ui/stack";
+import { Button, StackModal, ModalBody, Tooltip } from "@umbry/ui/stack";
 import { UserAvatar as Avatar } from "@/components/UserAvatar";
 import { useRelay, type RelayChannel } from "@/stores/useRelay";
 import { useSession } from "@/stores/useSession";

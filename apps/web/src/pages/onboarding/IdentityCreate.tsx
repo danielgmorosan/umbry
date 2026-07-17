@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Copy, RefreshCw, Check, ShieldCheck, Eye, EyeOff, Loader2 } from "lucide-react";
-import { Button, Field, Input } from "@gossip/ui/stack";
+import { Button, Field, Input } from "@umbry/ui/stack";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/stores/useSession";
 

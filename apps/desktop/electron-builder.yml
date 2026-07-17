@@ -1,6 +1,6 @@
-appId: net.massa.gossip.desktop
-productName: Gossip
-copyright: Copyright © Gossip
+appId: chat.umbry.desktop
+productName: Umbry
+copyright: Copyright © Umbry
 
 directories:
   output: release
@@ -52,10 +52,10 @@ linux:
     - target: AppImage
       arch: [x64]
   icon: build/icon.png
-  maintainer: Gossip <noreply@usegossip.com>
+  maintainer: Umbry <noreply@umbry.chat>
 
 # GitHub Releases as the update/publish channel (used by CI on tag builds).
 publish:
   provider: github
   owner: danielgmorosan
-  repo: Gossip-Enterpise
+  repo: umbry

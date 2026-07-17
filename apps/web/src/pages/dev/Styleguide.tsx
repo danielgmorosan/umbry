@@ -148,7 +148,7 @@ import {
   WorkspaceSidebarHeader,
   WorkspaceSwitcher,
   type AiSkillOption,
-} from "@gossip/ui/stack";
+} from "@umbry/ui/stack";
 
 /* ---------------------------------------------------------------- */
 
@@ -218,7 +218,7 @@ function AiChatDemo() {
     <AiPromptComposer
       value={view === "thread" ? reply : prompt}
       onChange={(e) => (view === "thread" ? setReply(e.target.value) : setPrompt(e.target.value))}
-      placeholder={view === "thread" ? "Reply…" : "Ask Gossip…"}
+      placeholder={view === "thread" ? "Reply…" : "Ask Umbry…"}
       skills={DEMO_SKILLS}
       activeSkill={skill}
       onSkillSelect={setSkill}
@@ -263,8 +263,8 @@ function AiChatDemo() {
               <AiChatWelcomeLayout
                 hero={
                   <AiChatHero
-                    title="Welcome to Gossip"
-                    subtitle="Ask anything or tell Gossip AI what you need"
+                    title="Welcome to Umbry"
+                    subtitle="Ask anything or tell Umbry AI what you need"
                   />
                 }
                 composer={composer}
@@ -302,7 +302,7 @@ function AiChatDemo() {
                 header={
                   <AiChatBreadcrumb
                     items={[
-                      { label: "Ask Gossip", onClick: () => setView("welcome") },
+                      { label: "Ask Umbry", onClick: () => setView("welcome") },
                       { label: "List tasks to complete" },
                     ]}
                   />
@@ -323,7 +323,7 @@ function AiChatDemo() {
                       <ul className="mt-4 space-y-2 text-[14px]">
                         {[
                           ["GW-25", "Ship channel search v1"],
-                          ["GW-31", "Wire Gossip AI recap route"],
+                          ["GW-31", "Wire Umbry AI recap route"],
                           ["GW-42", "Review relay self-host docs"],
                         ].map(([id, title]) => (
                           <li key={id} className="flex items-center gap-2">
@@ -354,7 +354,7 @@ function AiChatDemo() {
                       <kbd className="rounded-control border border-line bg-field px-1.5 py-0.5 font-mono text-[12px] text-ink-mute">
                         ⌘K
                       </kbd>{" "}
-                      to ask Gossip AI.
+                      to ask Umbry AI.
                     </>
                   }
                 />
@@ -368,7 +368,7 @@ function AiChatDemo() {
                       },
                       {
                         icon: <Sparkles strokeWidth={1.75} />,
-                        title: "Add Gossip AI to channels",
+                        title: "Add Umbry AI to channels",
                         description: "The assistant only reads channels it is a member of.",
                       },
                       {
@@ -518,7 +518,7 @@ function WorkspaceDemo() {
       />
       <div className="flex-1 overflow-y-auto">
         {[
-          ["Channel recap ready", "Gossip AI finished #marketing summary", "13m"],
+          ["Channel recap ready", "Umbry AI finished #marketing summary", "13m"],
           ["Relay health check", "Self-hosted relay responded slowly", "22m"],
           ["Design system review", "Stack components ready for QA", "1h"],
         ].map(([title, subtitle, time], i) => (
@@ -590,7 +590,7 @@ function WorkspaceDemo() {
         <IssueRow
           id="GW-31"
           age="1d"
-          title="Wire Gossip AI recap route"
+          title="Wire Umbry AI recap route"
           assignee={{ name: "Alex Smith" }}
         />
       </div>
@@ -1060,7 +1060,7 @@ function SettingsDemo() {
         />
         <div className="border-b border-line px-4 py-3.5">
           <CopyField
-            value="https://gossip.app/mothkeep/join/8f3a2b1c"
+            value="https://umbry.chat/mothkeep/join/8f3a2b1c"
             onCopy={() => {
               setShowToast(true);
               setTimeout(() => setShowToast(false), 3000);
@@ -1110,7 +1110,7 @@ function SettingsDemo() {
           }
         />
         <SettingsRow label="Name" control={<Input defaultValue="Mothkeep Labs" className="max-w-[200px] h-9 text-[13px]" />} />
-        <SettingsRow label="URL" control={<Input defaultValue="gossip.app/mothkeep" className="max-w-[220px] h-9 text-[13px]" />} />
+        <SettingsRow label="URL" control={<Input defaultValue="umbry.chat/mothkeep" className="max-w-[220px] h-9 text-[13px]" />} />
       </SettingsCard>
     </SettingsGroup>
     <SettingsGroup title="Time & region">
@@ -1205,7 +1205,7 @@ function SettingsDemo() {
         <IntegrationCard icon={<Mail className="size-4" />} title="Fastmail" description="Connect mail via JMAP for workspace notifications." />
         <IntegrationCard icon={<Box className="size-4" />} title="Nextcloud" description="Files, calendar, and contacts via open standards." />
         <IntegrationCard icon={<Radio className="size-4" />} title="LiveKit" description="Self-hostable calls with optional AI notetaker." />
-        <IntegrationCard icon={<Sparkles className="size-4" />} title="Gossip AI" description="Channel recaps and meeting notes on your hardware." />
+        <IntegrationCard icon={<Sparkles className="size-4" />} title="Umbry AI" description="Channel recaps and meeting notes on your hardware." />
       </IntegrationGrid>
     </SettingsGroup>
     <SettingsGroup title="Agents">
@@ -1261,7 +1261,7 @@ function SettingsDemo() {
       footer={<WizardFooter onBack={() => setImportStep((s) => Math.max(0, s - 1))} onNext={() => undefined} nextLabel="Start import" />}
     >
       <p className="mb-5 text-[14px] text-ink-mute">
-        Your migration from source workspace gossip.app/source is ready. We found:
+        Your migration from source workspace umbry.chat/source is ready. We found:
       </p>
       <StatGrid>
         <StatTile icon={<Users className="size-4" />} count={2} label="Teams" />
@@ -1298,7 +1298,7 @@ function SettingsDemo() {
         />
         <SettingsListRow
           icon={<span className="grid size-7 place-items-center rounded-control bg-field text-[11px] font-bold">@</span>}
-          title="b1db6243509c@intake.gossip.app"
+          title="b1db6243509c@intake.umbry.chat"
           trailing={<ExternalLink className="size-4 text-ink-faint" />}
         />
       </SettingsCard>
@@ -1365,7 +1365,7 @@ export function Styleguide() {
           <header className="flex items-end justify-between py-14">
             <div>
               <p className="mb-3 text-[13px] font-medium uppercase tracking-[0.14em] text-ink-mute">
-                @gossip/ui · stack
+                @umbry/ui · stack
               </p>
               <h1 className="text-4xl font-bold tracking-tight">Stack design system</h1>
               <p className="mt-3 max-w-lg text-[15px] leading-relaxed text-ink-mute">
@@ -1502,10 +1502,10 @@ export function Styleguide() {
                 <EmptyState
                   icon={
                     <IconTile>
-                      <BrandLogo src="/icon-mark.png" height={34} alt="Gossip mark" />
+                      <BrandLogo src="/icon-mark.png" height={34} alt="Umbry mark" />
                     </IconTile>
                   }
-                  title="Welcome to Gossip"
+                  title="Welcome to Umbry"
                   description="Please, confirm that this is your account by clicking the button below."
                 >
                   <Button block>Let's get started!</Button>
@@ -1519,14 +1519,14 @@ export function Styleguide() {
 
           <Section
             title="AI chat"
-            note="Gossip AI assistant flow - welcome, thread, and ready states. Preview locked to dark."
+            note="Umbry AI assistant flow - welcome, thread, and ready states. Preview locked to dark."
           >
             <AiChatDemo />
           </Section>
 
           <Section
             title="Workspace shell"
-            note="Sidebar, inbox list, issue rows, pulse feed, and Ask Gossip dock. Preview locked to dark."
+            note="Sidebar, inbox list, issue rows, pulse feed, and Ask Umbry dock. Preview locked to dark."
           >
             <WorkspaceDemo />
           </Section>
@@ -1545,7 +1545,7 @@ export function Styleguide() {
             <SettingsDemo />
           </Section>
 
-          <Section title="Auth layout" note="50/50 split: form column, decorative gossip-mark panel, dark footer bar.">
+          <Section title="Auth layout" note="50/50 split: form column, decorative brand-mark panel, dark footer bar.">
             <div className="overflow-hidden rounded-card border border-line">
               <div className="grid lg:grid-cols-2">
                 <div className="flex flex-col">
@@ -1598,7 +1598,7 @@ export function Styleguide() {
                     <PanelCard className="w-full max-w-sm p-6">
                       <div className="flex items-start gap-4">
                         <div className="grid size-16 shrink-0 place-items-center rounded-control bg-field">
-                          <BrandLogo src="/icon-mark.png" height={32} alt="Gossip mark" />
+                          <BrandLogo src="/icon-mark.png" height={32} alt="Umbry mark" />
                         </div>
                         <div className="grid flex-1 grid-cols-2 gap-3 font-mono text-[11px] uppercase tracking-wider text-ink-mute">
                           <div>
@@ -1624,7 +1624,7 @@ export function Styleguide() {
                         </div>
                       </div>
                       <div className="mt-6 border-t border-line pt-3 text-right text-sm font-bold tracking-tight">
-                        gossip
+                        umbry
                       </div>
                     </PanelCard>
                   </DecorPanel>
@@ -1637,7 +1637,7 @@ export function Styleguide() {
             </div>
             <p className="mt-4 text-sm text-ink-mute">
               Full-page version: <code className="font-mono text-[13px]">{"<AuthLayout brand legal panel footer>"}</code>{" "}
-              from <code className="font-mono text-[13px]">@gossip/ui/stack</code> - same composition at viewport height.
+              from <code className="font-mono text-[13px]">@umbry/ui/stack</code> - same composition at viewport height.
             </p>
           </Section>
         </div>

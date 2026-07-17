@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
-import { Button, Field, Input, textLinkClass } from "@gossip/ui/stack";
+import { Button, Field, Input, textLinkClass } from "@umbry/ui/stack";
 import { useSession } from "@/stores/useSession";
 import { useRelay } from "@/stores/useRelay";
 
@@ -38,7 +38,7 @@ export function WorkspaceCreate() {
 
       <form onSubmit={submit} className="mt-7 space-y-5">
         <Field label="Workspace name">
-          <Input autoFocus placeholder="e.g. Gossip Labs" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input autoFocus placeholder="e.g. Umbry Labs" value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
 
         {error && <p className="text-[13px] text-negative">{error}</p>}

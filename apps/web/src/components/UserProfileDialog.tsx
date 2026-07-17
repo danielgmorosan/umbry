@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { MessageSquareText, Phone, Copy, Check, ShieldCheck, Pencil } from "lucide-react";
-import { Button, Input, StackModal, ModalBody } from "@gossip/ui/stack";
+import { Button, Input, StackModal, ModalBody } from "@umbry/ui/stack";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useRelay } from "@/stores/useRelay";
 import { useSession } from "@/stores/useSession";

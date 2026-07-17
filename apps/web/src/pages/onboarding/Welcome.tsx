@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Sparkles, KeyRound } from "lucide-react";
-import { Button } from "@gossip/ui/stack";
+import { Button } from "@umbry/ui/stack";
 
 export function Welcome() {
   return (

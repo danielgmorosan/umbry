@@ -4,7 +4,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { contactLink } from "@/lib/contact";
 import { SettingsPage } from "./SettingsLayout";
 import { SettingGroup, SettingRow } from "./parts";
-import { Button, Field, Input } from "@gossip/ui/stack";
+import { Button, Field, Input } from "@umbry/ui/stack";
 import { UserAvatar as Avatar } from "@/components/UserAvatar";
 import { useSession } from "@/stores/useSession";
 import { useRelay } from "@/stores/useRelay";
@@ -156,7 +156,7 @@ export function ProfileSettings() {
                   onClick={() => {
                     if (!userId) return;
                     void navigator
-                      .share({ title: "DM me on Gossip", url: contactLink(userId, displayName) })
+                      .share({ title: "DM me on Umbry", url: contactLink(userId, displayName) })
                       .catch(() => {});
                   }}
                 >

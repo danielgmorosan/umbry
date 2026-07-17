@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Hash, Lock, KeyRound, Loader2 } from "lucide-react";
-import { Button, Field, Input, PasswordInput, StackModal, ModalBody } from "@gossip/ui/stack";
+import { Button, Field, Input, PasswordInput, StackModal, ModalBody } from "@umbry/ui/stack";
 import { useRelay } from "@/stores/useRelay";
 import { useSession } from "@/stores/useSession";
 import { useUnlockPrompt } from "@/components/UnlockDialog";

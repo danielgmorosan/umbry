@@ -216,7 +216,7 @@ export const useCall = create<CallState>((set, get) => {
         // Without it the picker never even shows the checkbox.
         await r.localParticipant.setScreenShareEnabled(enabling, {
           audio: true,
-          // Let people share the Gossip tab itself (demos) instead of hiding it.
+          // Let people share the Umbry tab itself (demos) instead of hiding it.
           selfBrowserSurface: "include",
           // Windows Chrome: pre-tick the "share system audio" option for screen shares.
           systemAudio: "include",

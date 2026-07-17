@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 import { cn } from "../../utils";
 
-/** Breadcrumb trail above an active thread — "Ask Gossip › …". */
+/** Breadcrumb trail above an active thread — "Ask Umbry › …". */
 export function AiChatBreadcrumb({
   items,
   actions,

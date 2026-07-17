@@ -1,4 +1,4 @@
-/* Mock data for the Gossip Workspace UI pass. All client-side, no network. */
+/* Mock data for the Umbry UI pass. All client-side, no network. */
 
 export type Role = "owner" | "admin" | "member" | "guest";
 export type Presence = "online" | "away" | "offline" | "dnd";
@@ -59,7 +59,7 @@ export const members: Member[] = [
   { id: "u_mara", displayName: "Mara Holt", handle: "gossipm4r8q1z7x9p2w5nl6dhtv", role: "member", presence: "away", title: "Design" },
   { id: "u_jun", displayName: "Jun Park", handle: "gossipj9n2q7z4x1p8w3nl5dhwb", role: "member", presence: "dnd", title: "Growth" },
   { id: "u_ada", displayName: "Ada Núñez", handle: "gossipad4q8z2x7p1w9nl4dhxc", role: "guest", presence: "offline", title: "Counsel (ext.)" },
-  { id: "u_oc", displayName: "Gossip AI", handle: "gossip-ai-bot-local-7f2a", role: "member", presence: "online", isAi: true, title: "AI assistant" },
+  { id: "u_oc", displayName: "Umbry AI", handle: "gossip-ai-bot-local-7f2a", role: "member", presence: "online", isAi: true, title: "AI assistant" },
 ];
 
 export const memberById = (id: string) => members.find((m) => m.id === id) ?? me;
@@ -67,7 +67,7 @@ export const memberById = (id: string) => members.find((m) => m.id === id) ?? me
 export const channels: Channel[] = [
   { id: "c_general", name: "general", type: "public", topic: "Company-wide announcements and chatter.", memberIds: members.map((m) => m.id) },
   { id: "c_eng", name: "engineering", type: "public", topic: "Protocol, relay, and client work.", unread: 3, aiMember: true, memberIds: ["u_me", "u_kev", "u_seb", "u_oc"] },
-  { id: "c_design", name: "design", type: "public", topic: "Gossip Workspace product design.", unread: 12, mentions: 1, aiMember: true, memberIds: ["u_me", "u_mara", "u_kev", "u_oc"] },
+  { id: "c_design", name: "design", type: "public", topic: "Umbry product design.", unread: 12, mentions: 1, aiMember: true, memberIds: ["u_me", "u_mara", "u_kev", "u_oc"] },
   { id: "c_marketing", name: "marketing-launch", type: "public", topic: "Go-to-market for the enterprise pivot.", aiMember: true, memberIds: ["u_me", "u_jun", "u_mara", "u_oc"] },
   { id: "c_sec", name: "security", type: "private", topic: "Crypto boundary + audits. Invite only.", muted: true, memberIds: ["u_me", "u_kev"] },
   { id: "c_legal", name: "legal-ext", type: "private", topic: "External counsel room.", memberIds: ["u_me", "u_ada"] },

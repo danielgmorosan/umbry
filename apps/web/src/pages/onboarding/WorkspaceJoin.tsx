@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Ticket, Loader2 } from "lucide-react";
-import { Button, Field, Input, textLinkClass } from "@gossip/ui/stack";
+import { Button, Field, Input, textLinkClass } from "@umbry/ui/stack";
 import { useSession } from "@/stores/useSession";
 import { useRelay } from "@/stores/useRelay";
 import { peekPendingInvite, clearPendingInvite } from "@/lib/invite";

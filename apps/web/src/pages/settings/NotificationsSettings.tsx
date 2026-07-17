@@ -1,5 +1,5 @@
 import { Hash, Lock, AtSign, MessageSquare, Users, Phone, ShieldCheck } from "lucide-react";
-import { Toggle } from "@gossip/ui/stack";
+import { Toggle } from "@umbry/ui/stack";
 import { SettingsPage } from "./SettingsLayout";
 import { SettingGroup, SettingRow } from "./parts";
 import { useNotifications, type NotifType } from "@/stores/useNotifications";

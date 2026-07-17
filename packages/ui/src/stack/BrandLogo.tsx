@@ -16,7 +16,7 @@ export interface BrandLogoProps extends ImgHTMLAttributes<HTMLImageElement> {
 export function BrandLogo({
   onInverse,
   height = 24,
-  alt = "Gossip",
+  alt = "Umbry",
   className,
   style,
   ...props

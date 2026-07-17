@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, CheckCheck, Settings2, AtSign, MessageSquare, Users, Phone, Lock } from "lucide-react";
-import { Tooltip } from "@gossip/ui/stack";
+import { Tooltip } from "@umbry/ui/stack";
 import { useNotifications, type AppNotification, type NotifType } from "@/stores/useNotifications";
 import { cn } from "@/lib/utils";
 

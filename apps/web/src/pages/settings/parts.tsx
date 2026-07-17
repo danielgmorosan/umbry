@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { SettingsCard } from "@gossip/ui/stack";
+import { SettingsCard } from "@umbry/ui/stack";
 
 export function SettingGroup({ title, children }: { title?: string; children: ReactNode }) {
   return (

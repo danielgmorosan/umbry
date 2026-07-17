@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
-import { Tooltip } from "@gossip/ui/stack";
+import { Tooltip } from "@umbry/ui/stack";
 import { cn } from "@/lib/utils";
 
 /**

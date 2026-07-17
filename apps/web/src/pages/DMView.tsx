@@ -1,6 +1,6 @@
 import { Navigate, useParams } from "react-router-dom";
 import { MessageSquareOff } from "lucide-react";
-import { PaneEmptyState } from "@gossip/ui/stack";
+import { PaneEmptyState } from "@umbry/ui/stack";
 import { RealDmView } from "@/components/chat/RealDmView";
 import { useContacts } from "@/stores/useContacts";
 import { useCall } from "@/stores/useCall";

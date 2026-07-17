@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Users, ShieldCheck, Plus } from "lucide-react";
-import { NavBadge } from "@gossip/ui/stack";
+import { NavBadge } from "@umbry/ui/stack";
 import { UserAvatar as Avatar } from "@/components/UserAvatar";
 import { useSession } from "@/stores/useSession";
 import { useRelay } from "@/stores/useRelay";

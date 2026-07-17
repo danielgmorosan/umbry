@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Users, UserPlus, MessageSquareLock, Phone, Copy, Check, Lock, Link2 } from "lucide-react";
-import { Button, Tooltip } from "@gossip/ui/stack";
+import { Button, Tooltip } from "@umbry/ui/stack";
 import { PaneHeader } from "@/components/chat/PaneHeader";
 import { NewDmDialog } from "@/components/chat/NewDmDialog";
 import { UserAvatar as Avatar } from "@/components/UserAvatar";
@@ -90,7 +90,7 @@ export function HomePage() {
               </span>
               <h2 className="mt-3 text-xl font-bold tracking-tight text-ink">No contacts yet</h2>
               <p className="mt-1 max-w-sm text-[14px] leading-relaxed text-ink-mute">
-                Add someone by their gossip ID, or share your contact link above. Every conversation is end-to-end encrypted.
+                Add someone by their Umbry ID, or share your contact link above. Every conversation is end-to-end encrypted.
               </p>
               <Button className="mt-4" onClick={() => setNewDm(true)}>
                 <UserPlus className="size-4" /> Add a contact

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ShieldAlert, Crown, LogOut } from "lucide-react";
 import { SettingsPage } from "./SettingsLayout";
 import { SettingGroup, SettingRow } from "./parts";
-import { Button, CopyField, DangerZone, DangerRow, ConfirmDestructiveModal } from "@gossip/ui/stack";
+import { Button, CopyField, DangerZone, DangerRow, ConfirmDestructiveModal } from "@umbry/ui/stack";
 import { UserAvatar as Avatar } from "@/components/UserAvatar";
 import { useRelay } from "@/stores/useRelay";
 import { truncateHandle } from "@/lib/utils";

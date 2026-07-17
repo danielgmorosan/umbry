@@ -8,7 +8,7 @@
  */
 import { contextBridge } from "electron";
 
-contextBridge.exposeInMainWorld("gossipDesktop", {
+contextBridge.exposeInMainWorld("umbryDesktop", {
   isDesktop: true,
   platform: process.platform,
   electron: process.versions.electron,

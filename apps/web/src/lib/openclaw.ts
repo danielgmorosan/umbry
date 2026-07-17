@@ -1,4 +1,4 @@
-import { OpenClawClient } from "@gossip/openclaw-bridge";
+import { OpenClawClient } from "@umbry/openclaw-bridge";
 import { relayUrl } from "./relayBase";
 import { getRelaySessionToken } from "@/stores/useRelay";
 

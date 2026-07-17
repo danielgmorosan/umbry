@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Hash, MessagesSquare, MessageSquareReply } from "lucide-react";
 import { PaneHeader } from "@/components/chat/PaneHeader";
-import { PaneEmptyState } from "@gossip/ui/stack";
+import { PaneEmptyState } from "@umbry/ui/stack";
 import { UserAvatar as Avatar } from "@/components/UserAvatar";
 import { useRelay } from "@/stores/useRelay";
 import { useSession } from "@/stores/useSession";

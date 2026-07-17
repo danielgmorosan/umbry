@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import { Tooltip } from "@gossip/ui/stack";
+import { Tooltip } from "@umbry/ui/stack";
 
 /**
  * Shared back affordance (T2-03). Always targets an EXPLICIT parent route

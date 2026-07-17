@@ -9,7 +9,7 @@ import {
   type TrackReferenceOrPlaceholder,
 } from "@livekit/components-react";
 import { Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff, MessageSquareText, VolumeX, X, Maximize, Minimize, Settings2 } from "lucide-react";
-import { Tooltip } from "@gossip/ui/stack";
+import { Tooltip } from "@umbry/ui/stack";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useCall, type CallTarget } from "@/stores/useCall";
 import { useSession } from "@/stores/useSession";

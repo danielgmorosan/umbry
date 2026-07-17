@@ -1,6 +1,6 @@
-# Gossip Workspace — Project Spec
+# Umbry — Project Spec
 
-> **Codename:** Gossip Workspace (placeholder — swap freely).
+> **Codename:** Umbry (placeholder — swap freely).
 > **One-liner:** A decentralized, privacy-first competitor to Slack, built on Gossip's
 > end-to-end-encrypted messaging stack, with privacy-focused mini-app integrations and a
 > self-hosted AI assistant (OpenClaw) that can run on a local model.
@@ -465,7 +465,7 @@ DeWeb deployment, group-E2EE upgrade path (fan-out → MLS).
 ---
 
 ## 16. Open decisions for the human (resolve before/while building)
-1. **Product name** (replace "Gossip Workspace").
+1. **Product name** (replace "Umbry").
 2. **Desktop shell:** Tauri (recommended, lighter) vs Electron.
 3. **Group-chat privacy ambition for v1:** confirm relay-backed non-E2EE is acceptable (current
    assumption) vs. attempt small-group fan-out E2EE sooner.

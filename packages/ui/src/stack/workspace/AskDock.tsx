@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 import { Clock, Sparkles } from "lucide-react";
 import { cn } from "../../utils";
 
-/** Bottom-right "Ask Gossip" trigger docked over workspace content. */
+/** Bottom-right "Ask Umbry" trigger docked over workspace content. */
 export function AskDock({
-  label = "Ask Gossip",
+  label = "Ask Umbry",
   onAsk,
   onHistory,
   className,

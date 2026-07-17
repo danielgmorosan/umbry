@@ -1,7 +1,7 @@
 /**
  * Stack design system — light-first monochrome auth/marketing language.
  * Import tokens once (apps/web/src/index.css pulls in ./tokens.css),
- * then consume components from "@gossip/ui/stack".
+ * then consume components from "@umbry/ui/stack".
  */
 export { Button } from "./Button";
 export type { StackButtonProps } from "./Button";
@@ -14,12 +14,12 @@ export { TextLink, textLinkClass } from "./TextLink";
 export { Tooltip } from "./Tooltip";
 export type { StackTooltipProps } from "./Tooltip";
 export { EmptyState, IconTile } from "./EmptyState";
-export { AuthLayout, DecorPanel, PanelCard, FooterBar, GossipMarkGraphic } from "./AuthLayout";
+export { AuthLayout, DecorPanel, PanelCard, FooterBar, UmbryMarkGraphic } from "./AuthLayout";
 export { BrandLogo } from "./BrandLogo";
 export type { BrandLogoProps } from "./BrandLogo";
 export { GoogleGlyph } from "./icons";
 
-/* AI chat flow (Gossip AI / workspace assistant) */
+/* AI chat flow (Umbry AI / workspace assistant) */
 export {
   AiPromptComposer,
   AiChatBreadcrumb,

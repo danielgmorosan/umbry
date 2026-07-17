@@ -1,13 +1,13 @@
 <div align="center">
 
-# Gossip
+# Umbry
 
 **A private, decentralized team workspace — Slack/Discord, but the messages are actually private, the AI runs on your own hardware, and there's no vendor server that can be subpoenaed, breached, or shut off.**
 
-[![Desktop build](https://github.com/danielgmorosan/Gossip-Enterpise/actions/workflows/desktop.yml/badge.svg)](https://github.com/danielgmorosan/Gossip-Enterpise/actions/workflows/desktop.yml)
-[![Latest release](https://img.shields.io/github/v/release/danielgmorosan/Gossip-Enterpise?label=desktop&sort=semver)](https://github.com/danielgmorosan/Gossip-Enterpise/releases/latest)
+[![Desktop build](https://github.com/danielgmorosan/umbry/actions/workflows/desktop.yml/badge.svg)](https://github.com/danielgmorosan/umbry/actions/workflows/desktop.yml)
+[![Latest release](https://img.shields.io/github/v/release/danielgmorosan/umbry?label=desktop&sort=semver)](https://github.com/danielgmorosan/umbry/releases/latest)
 
-[**Live app**](https://gossip-enterpise.vercel.app) · [**Download desktop**](https://github.com/danielgmorosan/Gossip-Enterpise/releases/latest) · [Product spec](docs/SPEC.md) · [Architecture & roadmap](docs/INTEGRATION-PLAN.md)
+[**Live app**](https://umbry.chat) · [**Download desktop**](https://github.com/danielgmorosan/umbry/releases/latest) · [Product spec](docs/SPEC.md) · [Architecture & roadmap](docs/INTEGRATION-PLAN.md)
 
 </div>
 
@@ -15,7 +15,7 @@
 
 ## What is this?
 
-Gossip takes [Gossip's](https://github.com/massalabs/gossip) consumer end-to-end-encrypted messenger — pseudonymous identity (a passphrase, no PII), post-quantum encryption, no central server — and turns it into a **team-collaboration product**: channels, direct messages, voice/video calls, file sharing, and a workspace AI assistant.
+Umbry takes [Gossip's](https://github.com/massalabs/gossip) consumer end-to-end-encrypted messenger — pseudonymous identity (a passphrase, no PII), post-quantum encryption, no central server — and turns it into a **team-collaboration product**: channels, direct messages, voice/video calls, file sharing, and a workspace AI assistant.
 
 The pitch, in one line: **Slack where DMs are provably private, the AI runs on your own machine, and you can self-host the whole thing.**
 
@@ -30,18 +30,18 @@ The pitch, in one line: **Slack where DMs are provably private, the AI runs on y
 
 ## Download
 
-Grab the desktop app from the [**latest release**](https://github.com/danielgmorosan/Gossip-Enterpise/releases/latest):
+Grab the desktop app from the [**latest release**](https://github.com/danielgmorosan/umbry/releases/latest):
 
 | Platform | File |
 |---|---|
-| Windows | `Gossip.Setup.*.exe` |
-| macOS (Apple Silicon) | `Gossip-*-arm64.dmg` |
-| macOS (Intel) | `Gossip-*.dmg` |
-| Linux | `Gossip-*.AppImage` |
+| Windows | `Umbry.Setup.*.exe` |
+| macOS (Apple Silicon) | `Umbry-*-arm64.dmg` |
+| macOS (Intel) | `Umbry-*.dmg` |
+| Linux | `Umbry-*.AppImage` |
 
 The builds are currently **unsigned**, so on first launch: Windows → SmartScreen → *More info → Run anyway*; macOS → right-click the app → *Open*.
 
-Prefer the browser? The app also runs at **[gossip-enterpise.vercel.app](https://gossip-enterpise.vercel.app)**.
+Prefer the browser? The app also runs at **[umbry.chat](https://umbry.chat)**.
 
 ## How it works today (the centralized setup)
 
@@ -107,10 +107,10 @@ apps/
   web/                 # the workspace frontend (React 19 + Vite + Tailwind v4)
   desktop/             # Electron shell — loads the web app in a hardened window (+ CI installers)
 packages/
-  ui/                  # @gossip/ui — shared design system (dark + mint, the brand)
-  openclaw-bridge/     # @gossip/openclaw-bridge — typed client for the AI gateway
-  miniapp-sdk/         # @gossip/miniapp-sdk — sandboxed host<->miniapp postMessage contract
-  config/              # @gossip/config — shared tsconfig base
+  ui/                  # @umbry/ui — shared design system (dark + mint, the brand)
+  openclaw-bridge/     # @umbry/openclaw-bridge — typed client for the AI gateway
+  miniapp-sdk/         # @umbry/miniapp-sdk — sandboxed host<->miniapp postMessage contract
+  config/              # @umbry/config — shared tsconfig base
 services/
   relay/               # the message-transfer relay: channels, LiveKit tokens, AI jobs, uploads
   openclaw/            # AI gateway config + gossip channel-plugin notes (sidecar)
@@ -124,8 +124,8 @@ Requires **Node ≥ 20** and **pnpm** (`corepack enable` picks up the pinned ver
 
 ```bash
 # clone with the gossip submodule (provides gossip-sdk)
-git clone --recurse-submodules https://github.com/danielgmorosan/Gossip-Enterpise
-cd Gossip-Enterpise
+git clone --recurse-submodules https://github.com/danielgmorosan/umbry
+cd umbry
 pnpm install
 
 cp apps/web/.env.example apps/web/.env       # frontend config (no secrets)
@@ -134,13 +134,13 @@ cp apps/web/.env.example apps/web/.env       # frontend config (no secrets)
 cd services/relay && cp .env.example .env && node server.mjs
 
 # terminal 2 — the web app on http://localhost:5173 (Vite proxies to the relay)
-pnpm --filter @gossip/web dev
+pnpm --filter @umbry/web dev
 ```
 
 Run the desktop shell against your local web server:
 
 ```bash
-GOSSIP_DESKTOP_URL=http://localhost:5173 pnpm --filter @gossip/desktop dev
+UMBRY_DESKTOP_URL=http://localhost:5173 pnpm --filter @umbry/desktop dev
 ```
 
 Other tasks: `pnpm typecheck`, `pnpm build`. Full end-to-end DMs additionally need Gossip's WASM crypto built inside the submodule (`vendor/gossip` → `npm run setup && npm run wasm:build`) — see [`docs/SPEC.md`](docs/SPEC.md).

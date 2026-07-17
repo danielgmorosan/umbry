@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Copy, Check, UserPlus, Loader2 } from "lucide-react";
-import { Button, Field, Input, StackModal, ModalBody, Tooltip } from "@gossip/ui/stack";
+import { Button, Field, Input, StackModal, ModalBody, Tooltip } from "@umbry/ui/stack";
 import { gossipSdk } from "@/lib/sdk";
 import { useContacts } from "@/stores/useContacts";
 import { useSession } from "@/stores/useSession";

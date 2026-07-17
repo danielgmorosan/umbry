@@ -7,7 +7,7 @@ import { MessageBody } from "@/components/chat/MessageBody";
 import { MessagePreviews } from "@/components/chat/LinkPreview";
 import { MessageActionsBar, ArmDeleteButton, EditBox } from "@/components/chat/MessageActionsBar";
 import { Pencil } from "lucide-react";
-import { Button, StackToast, Tooltip } from "@gossip/ui/stack";
+import { Button, StackToast, Tooltip } from "@umbry/ui/stack";
 import { UserAvatar as Avatar } from "@/components/UserAvatar";
 import { gossipSdk, SdkEventType, MessageDirection, MessageType, type Message } from "@/lib/sdk";
 import { parseCallSignal, callSignalLabel } from "@/lib/callSignals";

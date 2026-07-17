@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Search, UserPlus, Check, MessageSquare, ShieldCheck, Hammer, Loader2 } from "lucide-react";
 import { PaneHeader } from "@/components/chat/PaneHeader";
-import { Button, Input, StackModal, ModalBody, StackToast, Field } from "@gossip/ui/stack";
+import { Button, Input, StackModal, ModalBody, StackToast, Field } from "@umbry/ui/stack";
 import { UserAvatar as Avatar } from "@/components/UserAvatar";
 import { useRelay, ADMIN_PERMISSIONS, type AdminPermission, type RelayMember } from "@/stores/useRelay";
 import { useSession } from "@/stores/useSession";
@@ -159,7 +159,7 @@ export function MembersPage() {
 
           <p className="mt-6 text-[11.5px] leading-relaxed text-ink-faint">
             Roles and bans are enforced by the relay (transport). Note: the relay identifies members by
-            their self-reported Gossip handle; it is workspace governance, not cryptographic auth.
+            their self-reported identity handle; it is workspace governance, not cryptographic auth.
           </p>
         </div>
       </div>

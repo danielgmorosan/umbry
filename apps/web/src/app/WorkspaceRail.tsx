@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Plus, Mail, Calendar, FileText, NotebookPen, Video, Settings, LogOut, Trash2 } from "lucide-react";
-import { BrandLogo, Tooltip } from "@gossip/ui/stack";
+import { BrandLogo, Tooltip } from "@umbry/ui/stack";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { ContextMenu, ConfirmDialog } from "@/components/ContextMenu";
 import { StatusMenu } from "@/components/StatusMenu";
@@ -58,7 +58,7 @@ export function WorkspaceRail() {
             onHome ? "rounded-control bg-field ring-1 ring-line-strong" : "hover:rounded-control hover:bg-field",
           )}
         >
-          <BrandLogo src="/icon-mark.png" height={26} alt="Gossip" className="transition-transform group-hover:scale-105" />
+          <BrandLogo src="/icon-mark.png" height={26} alt="Umbry" className="transition-transform group-hover:scale-105" />
           {dmUnread > 0 && (
             <span className="absolute -right-1 -top-1 grid min-w-4 place-items-center rounded-full bg-ink px-1 text-[9px] font-bold leading-4 text-paper">
               {dmUnread > 99 ? "99+" : dmUnread}

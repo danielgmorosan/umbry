@@ -1,4 +1,4 @@
-import { Avatar } from "@gossip/ui/stack";
+import { Avatar } from "@umbry/ui/stack";
 import { useAvatars, resolveAvatarSrc } from "@/stores/useAvatars";
 import { useRelay } from "@/stores/useRelay";
 import { useSession } from "@/stores/useSession";

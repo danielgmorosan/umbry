@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Hash, ShieldCheck, SearchX } from "lucide-react";
 import { PaneHeader } from "@/components/chat/PaneHeader";
-import { SearchHeader, SearchResultRow, PaneEmptyState } from "@gossip/ui/stack";
+import { SearchHeader, SearchResultRow, PaneEmptyState } from "@umbry/ui/stack";
 import { useRelay } from "@/stores/useRelay";
 import { formatTime } from "@/lib/utils";
 

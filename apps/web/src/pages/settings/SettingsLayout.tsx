@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { NavLink, Outlet, Link, useLocation } from "react-router-dom";
 import { User, Building2, Plug, Cpu, ShieldCheck, Bell, Palette, ArrowLeft, Headphones } from "lucide-react";
-import { BrandLogo } from "@gossip/ui/stack";
+import { BrandLogo } from "@umbry/ui/stack";
 import { cn } from "@/lib/utils";
 import { useRelay } from "@/stores/useRelay";
 
@@ -49,7 +49,7 @@ export function SettingsLayout() {
           <BrandLogo src="/icon-mark.png" height={24} />
           <div>
             <div className="text-[14px] font-semibold text-ink">Settings</div>
-            <div className="text-[11px] text-ink-faint">{myWorkspaces[0]?.name ?? "Gossip"}</div>
+            <div className="text-[11px] text-ink-faint">{myWorkspaces[0]?.name ?? "Umbry"}</div>
           </div>
         </div>
 

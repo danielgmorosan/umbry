@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from "react";
 import { Copy, Check, Share2, Trash2 } from "lucide-react";
-import { Tooltip } from "@gossip/ui/stack";
+import { Tooltip } from "@umbry/ui/stack";
 import { cn } from "@/lib/utils";
 
 /**

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Fingerprint, KeyRound, Loader2, ShieldCheck, UserPlus } from "lucide-react";
 import { SettingsPage } from "./SettingsLayout";
 import { SettingGroup, SettingRow } from "./parts";
-import { Button } from "@gossip/ui/stack";
+import { Button } from "@umbry/ui/stack";
 import { ConfirmDialog } from "@/components/ContextMenu";
 import { useSession } from "@/stores/useSession";
 import {

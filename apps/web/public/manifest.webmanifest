@@ -1,12 +1,12 @@
 {
-  "name": "Gossip Workspace",
-  "short_name": "Gossip",
+  "name": "Umbry",
+  "short_name": "Umbry",
   "description": "Private, decentralized team workspace on Gossip's E2EE stack.",
   "theme_color": "#0F1115",
   "background_color": "#0F1115",
   "display": "standalone",
   "icons": [
     { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
-    { "src": "/gossip-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "/umbry-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }

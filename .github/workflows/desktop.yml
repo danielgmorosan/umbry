@@ -37,7 +37,7 @@ jobs:
 
       # Only the desktop workspace's deps — no web app / gossip-sdk build needed.
       - name: Install desktop deps
-        run: pnpm install --filter @gossip/desktop... --frozen-lockfile
+        run: pnpm install --filter @umbry/desktop... --frozen-lockfile
 
       - name: Build installers
         working-directory: apps/desktop

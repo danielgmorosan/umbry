@@ -6,5 +6,5 @@ export { Toggle } from "./Toggle";
 export { Badge } from "./Badge";
 export { Card, SectionHeader, Divider } from "./Surface";
 export { Segmented } from "./Segmented";
-export { GossipMark, GossipLogo } from "./Logo";
+export { UmbryMark, UmbryLogo } from "./Logo";
 export { cn, colorForId, initials } from "./utils";

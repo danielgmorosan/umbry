@@ -1,5 +1,5 @@
 /**
- * Gossip Workspace — relay (v1).
+ * Umbry — relay (v1).
  *
  * Source of truth for workspaces, channels, membership, and channel messages
  * (the "workspace-confidential", non-E2EE group transport from the spec — TLS in transit,
@@ -42,7 +42,7 @@ const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET ?? "";
 const livekitConfigured = Boolean(LIVEKIT_URL && LIVEKIT_API_KEY && LIVEKIT_API_SECRET);
 
-// ── Gossip AI (model routing) ──────────────────────────────────────
+// ── Umbry AI (model routing) ──────────────────────────────────────
 // Default route = local Ollama (native /api/chat, NOT /v1 — keeps tool-calling intact).
 // Cloud (Anthropic) is an opt-in route added later. The AI lives here in the relay, which
 // only holds CHANNEL data — so it structurally cannot read E2EE DMs.
@@ -348,7 +348,7 @@ async function fetchUnfurl(parsed) {
     const res = await fetch(parsed.href, {
       signal: ctrl.signal,
       redirect: "follow",
-      headers: { "user-agent": "Mozilla/5.0 (compatible; GossipUnfurl/1.0)", accept: "text/html,*/*" },
+      headers: { "user-agent": "Mozilla/5.0 (compatible; UmbryUnfurl/1.0)", accept: "text/html,*/*" },
     });
     const type = res.headers.get("content-type") ?? "";
     if (type.startsWith("image/")) return { url: parsed.href, image: parsed.href };
@@ -691,7 +691,7 @@ async function ollamaChat(system, user) {
 }
 
 const SYSTEM_PROMPT =
-  "You are Gossip AI, a privacy-first assistant inside a team workspace. " +
+  "You are Umbry AI, a privacy-first assistant inside a team workspace. " +
   "You can ONLY see the channel content provided to you below — you have no access to direct messages or anything else. " +
   "Answer strictly from the provided channel content. If the answer isn't there, say so. " +
   "Be concise and well-structured; use short bullets for recaps and call out decisions and action items.";

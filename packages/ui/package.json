@@ -1,5 +1,5 @@
 {
-  "name": "@gossip/ui",
+  "name": "@umbry/ui",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -17,7 +17,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@gossip/config": "workspace:*",
+    "@umbry/config": "workspace:*",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "typescript": "^5.7.2"

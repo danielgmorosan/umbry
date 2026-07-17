@@ -14,7 +14,7 @@ import {
 import { Plus, WandSparkles, X, Mic, Trash2 } from "lucide-react";
 import { VoiceRecorder, formatDuration } from "@/lib/voiceRecorder";
 import { RecordingWaveform } from "./RecordingWaveform";
-import { StackToast, Tooltip } from "@gossip/ui/stack";
+import { StackToast, Tooltip } from "@umbry/ui/stack";
 import { cn } from "@/lib/utils";
 import { openclaw } from "@/lib/openclaw";
 import { EmojiPickerPopover } from "./EmojiPickerPopover";

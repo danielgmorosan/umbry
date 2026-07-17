@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff } from "lucide-react";
-import { Tooltip } from "@gossip/ui/stack";
+import { Tooltip } from "@umbry/ui/stack";
 import {
   RoomContext,
   RoomAudioRenderer,

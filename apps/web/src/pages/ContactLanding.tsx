@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { MessageSquareLock, UserX } from "lucide-react";
-import { Button } from "@gossip/ui/stack";
+import { Button } from "@umbry/ui/stack";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useSession } from "@/stores/useSession";
 import { useContacts } from "@/stores/useContacts";
@@ -50,7 +50,7 @@ export function ContactLanding() {
       <Shell>
         <span className="mx-auto grid size-12 place-items-center rounded-card bg-field text-ink"><UserX className="size-6" /></span>
         <h1 className="mt-3 text-xl font-bold tracking-tight text-ink">Not a valid contact link</h1>
-        <p className="mt-1 text-[14px] text-ink-mute">The handle in this link doesn't look like a Gossip identity.</p>
+        <p className="mt-1 text-[14px] text-ink-mute">The handle in this link doesn't look like a valid Umbry identity.</p>
         <Button className="mt-4" onClick={() => nav("/", { replace: true })}>Go home</Button>
       </Shell>
     );

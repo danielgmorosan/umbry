@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { ArrowRight, Check, Fingerprint, Loader2 } from "lucide-react";
-import { Field, PasswordInput, Button, LabeledDivider, textLinkClass } from "@gossip/ui/stack";
+import { Field, PasswordInput, Button, LabeledDivider, textLinkClass } from "@umbry/ui/stack";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/stores/useSession";
 import { useRelay } from "@/stores/useRelay";

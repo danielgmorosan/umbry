@@ -73,7 +73,7 @@ export const useContacts = create<ContactsState>((set, get) => ({
 
   add: async (userId, name) => {
     const id = userId.trim();
-    if (!id.startsWith("gossip1")) return { ok: false, error: "Enter a valid gossip user ID (gossip1…)." };
+    if (!id.startsWith("gossip1")) return { ok: false, error: "Enter a valid Umbry user ID (gossip1…)." };
     if (id === gossipSdk.userId) return { ok: false, error: "That's your own ID." };
     try {
       // Fetches their key, adds the contact, AND creates+initiates the

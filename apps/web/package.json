@@ -1,5 +1,5 @@
 {
-  "name": "@gossip/web",
+  "name": "@umbry/web",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -13,9 +13,9 @@
     "@dicebear/collection": "^9.4.2",
     "@dicebear/core": "^9.4.3",
     "@fontsource/noto-color-emoji": "^5.2.12",
-    "@gossip/miniapp-sdk": "workspace:*",
-    "@gossip/openclaw-bridge": "workspace:*",
-    "@gossip/ui": "workspace:*",
+    "@umbry/miniapp-sdk": "workspace:*",
+    "@umbry/openclaw-bridge": "workspace:*",
+    "@umbry/ui": "workspace:*",
     "@livekit/components-react": "^2",
     "@livekit/components-styles": "^1",
     "@massalabs/gossip-sdk": "workspace:*",
@@ -32,7 +32,7 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
-    "@gossip/config": "workspace:*",
+    "@umbry/config": "workspace:*",
     "@tailwindcss/vite": "^4.0.0",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",

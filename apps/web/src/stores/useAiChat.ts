@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 /**
- * Gossip AI conversation memory (T3). Turns live here (persisted locally,
+ * Umbry AI conversation memory (T3). Turns live here (persisted locally,
  * keyed per workspace / per channel panel) instead of component state, so
  * navigating away from the AI pane no longer wipes the conversation.
  * Local-only, like everything AI-related: nothing syncs anywhere.

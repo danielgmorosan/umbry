@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { create } from "zustand";
 import { Check, Fingerprint, Loader2, LockKeyhole } from "lucide-react";
-import { Button, Field, PasswordInput, StackModal, ModalBody } from "@gossip/ui/stack";
+import { Button, Field, PasswordInput, StackModal, ModalBody } from "@umbry/ui/stack";
 import { useSession } from "@/stores/useSession";
 import { validateMnemonic } from "@/lib/sdk";
 import { hasBiometricVault, unlockBiometricVault } from "@/lib/biometricVault";

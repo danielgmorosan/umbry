@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
-import { Button, StackModal, ModalBody } from "@gossip/ui/stack";
+import { Button, StackModal, ModalBody } from "@umbry/ui/stack";
 import { cn } from "@/lib/utils";
 
 /** Right-click menu (T3): positioned at the cursor, Esc/click-away closes. */

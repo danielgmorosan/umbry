@@ -1,10 +1,10 @@
 # OpenClaw gateway (sidecar)
 
-Self-hosted AI assistant gateway for Gossip Workspace. The frontend talks to it **only** through
-`@gossip/openclaw-bridge` — model API keys live here, never in the web bundle.
+Self-hosted AI assistant gateway for Umbry. The frontend talks to it **only** through
+`@umbry/openclaw-bridge` — model API keys live here, never in the web bundle.
 
 ## Responsibilities
-- Expose `/health`, `/jobs`, `/jobs/stream` (see `@gossip/openclaw-bridge` for the typed contract).
+- Expose `/health`, `/jobs`, `/jobs/stream` (see `@umbry/openclaw-bridge` for the typed contract).
 - Authenticate the requesting member and **enforce channel scope** server-side (defense in depth —
   the client also scopes, but the gateway must re-check). **Never read DMs.**
 - Route reasoning per `routing` in `openclaw.config.json`:

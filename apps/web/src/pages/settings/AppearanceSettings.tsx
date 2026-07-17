@@ -8,7 +8,7 @@ export function AppearanceSettings() {
   const { theme, set } = useTheme();
 
   return (
-    <SettingsPage title="Appearance" desc="Make the workspace yours. Dark is the Gossip default.">
+    <SettingsPage title="Appearance" desc="Make the workspace yours. Dark is the Umbry default.">
       <SettingGroup title="Theme">
         <div className="grid grid-cols-2 gap-3 p-4">
           {(["dark", "light"] as const).map((t) => {

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Mic, Volume2, RefreshCw, AudioWaveform } from "lucide-react";
 import { SettingsPage } from "./SettingsLayout";
 import { SettingGroup, SettingRow } from "./parts";
-import { Button, Toggle } from "@gossip/ui/stack";
+import { Button, Toggle } from "@umbry/ui/stack";
 import { useAudioSettings } from "@/stores/useAudioSettings";
 import { useAdvancedAudio } from "@/stores/useAdvancedAudio";
 import { useCall } from "@/stores/useCall";

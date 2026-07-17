@@ -153,11 +153,11 @@ async function createPasskey(displayName: string, withPrf: boolean): Promise<Pub
   const created = (await navigator.credentials.create({
     publicKey: {
       challenge: crypto.getRandomValues(new Uint8Array(32)),
-      rp: { name: "Gossip", id: window.location.hostname },
+      rp: { name: "Umbry", id: window.location.hostname },
       user: {
         id: crypto.getRandomValues(new Uint8Array(16)) as BufferSource,
-        name: displayName || "Gossip user",
-        displayName: displayName || "Gossip user",
+        name: displayName || "Umbry user",
+        displayName: displayName || "Umbry user",
       },
       pubKeyCredParams: [
         { type: "public-key", alg: -7 }, // ES256

@@ -12,7 +12,7 @@ import {
   Copy,
   Check,
 } from "lucide-react";
-import { NavBadge, Tooltip } from "@gossip/ui/stack";
+import { NavBadge, Tooltip } from "@umbry/ui/stack";
 import { cn } from "@/lib/utils";
 import { inviteLink } from "@/lib/invite";
 import { useSession } from "@/stores/useSession";
@@ -165,7 +165,7 @@ export function ChannelSidebar() {
       <div className="space-y-0.5 px-2 pt-2">
         <Row to={`${base}/ai`}>
           <Sparkles className="size-4 shrink-0" />
-          <span>Gossip AI</span>
+          <span>Umbry AI</span>
           <NavBadge>local</NavBadge>
         </Row>
         <Row to={`${base}/members`}>

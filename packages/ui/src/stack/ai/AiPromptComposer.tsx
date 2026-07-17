@@ -88,7 +88,7 @@ export const AiPromptComposer = forwardRef<HTMLTextAreaElement, AiPromptComposer
       className,
       value,
       onChange,
-      placeholder = "Ask Gossip…",
+      placeholder = "Ask Umbry…",
       disabled,
       rows = 1,
       ...props

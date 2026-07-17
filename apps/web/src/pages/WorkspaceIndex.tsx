@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Hash, Loader2, Plus } from "lucide-react";
-import { Button } from "@gossip/ui/stack";
+import { Button } from "@umbry/ui/stack";
 import { useRelay } from "@/stores/useRelay";
 import { CreateChannelDialog } from "@/components/chat/CreateChannelDialog";
 

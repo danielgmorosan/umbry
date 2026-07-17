@@ -1,11 +1,11 @@
 {
-  "name": "gossip-workspace",
+  "name": "umbry",
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "turbo run dev",
-    "dev:web": "pnpm --filter @gossip/web dev",
+    "dev:web": "pnpm --filter @umbry/web dev",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint"

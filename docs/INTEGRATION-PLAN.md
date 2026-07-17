@@ -1,4 +1,4 @@
-# Gossip Workspace — Desktop, Self-Hosting & Security Integration Plan
+# Umbry — Desktop, Self-Hosting & Security Integration Plan
 
 > **Goal:** one codebase that serves three kinds of users with the *least possible effort for each*:
 >
@@ -183,7 +183,7 @@ We already have the perfect primitive: every user has a **Gossip identity with a
 
 ### 4.5 Desktop (Electron) hardening — non-negotiables from day one
 - `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`; a single narrow preload
-  exposing a typed `window.gossipDesktop` IPC surface (service status, toggle, notifications).
+  exposing a typed `window.umbryDesktop` IPC surface (service status, toggle, notifications).
   **No generic `ipcRenderer` exposure.**
 - Strict CSP on the renderer (`default-src 'self'`; `connect-src` limited to the configured relay
   + LiveKit + Ollama origins); `webSecurity` stays on; deny `window.open`/navigation to
@@ -215,7 +215,7 @@ supervisor trivial, and bundled Chromium guarantees the Gossip SDK's WASM +
 `apps/desktop` workspace package; macOS/Linux/Windows differences live in a CI build matrix
 (GitHub Actions: `macos-latest` / `ubuntu-latest` / `windows-latest` → electron-builder →
 `.dmg` / `.AppImage` + `.deb` / `.exe`). Web build keeps deploying to Vercel unchanged; the
-renderer detects `window.gossipDesktop` and lights up desktop-only UI.
+renderer detects `window.umbryDesktop` and lights up desktop-only UI.
 
 ```
 apps/desktop/
@@ -236,7 +236,7 @@ apps/desktop/
 Settings → **Self-hosting** (desktop only; web shows the panel disabled with a "get the desktop
 app" link):
 
-- **Master switch:** "Run Gossip services on this computer".
+- **Master switch:** "Run Umbry services on this computer".
 - Turning it ON walks a checklist UI, fully automated unless something needs consent:
   1. **Relay** — spawn bundled relay (`DATA_DIR` = app data dir, fresh `DATA_KEY` in keychain).
      ~1 s. ✅
@@ -275,7 +275,7 @@ public self-host marketing on purpose.
 
 | Phase | Scope | Key deliverables | Rough effort |
 |---|---|---|---|
-| **D1. Desktop shell** | Electron app running the existing renderer | ✅ **DONE (2026-07-16).** `apps/desktop` hardened Electron shell (contextIsolation/sandbox on, nodeIntegration off, origin-pinned nav, `window.gossipDesktop` marker) loading the deployed app; verified via Playwright-Electron. **Installers shipping via CI:** `electron-builder` + GitHub Actions matrix builds Windows (nsis .exe), macOS (arm64+x64 .dmg), Linux (AppImage) on every `desktop-v*` tag and publishes them to a GitHub Release. All 3 green in [desktop-v0.1.0](https://github.com/danielgmorosan/Gossip-Enterpise/releases/tag/desktop-v0.1.0). **⏳ Optional later:** signing/notarization (unsigned today — add `CSC_*`/`APPLE_*` secrets), auto-update (electron-updater), native-notification click-to-focus, `.deb`. | done |
+| **D1. Desktop shell** | Electron app running the existing renderer | ✅ **DONE (2026-07-16).** `apps/desktop` hardened Electron shell (contextIsolation/sandbox on, nodeIntegration off, origin-pinned nav, `window.umbryDesktop` marker) loading the deployed app; verified via Playwright-Electron. **Installers shipping via CI:** `electron-builder` + GitHub Actions matrix builds Windows (nsis .exe), macOS (arm64+x64 .dmg), Linux (AppImage) on every `desktop-v*` tag and publishes them to a GitHub Release. All 3 green in [desktop-v0.1.0](https://github.com/danielgmorosan/umbry/releases/tag/desktop-v0.1.0). **⏳ Optional later:** signing/notarization (unsigned today — add `CSC_*`/`APPLE_*` secrets), auto-update (electron-updater), native-notification click-to-focus, `.deb`. | done |
 | **D2. Relay auth** | F1–F4 fixes | ✅ **COMPLETE — enforcement LIVE (2026-07-16).** Step 1: signed-hello challenge–response, mnemonic-derived Ed25519 keys, TOFU pinning, session tokens. Step 2: token on every relay HTTP call + AI context scoped to membership (always) + token/identity/membership checks on AI/LiveKit/upload. Step 3: privileged WS actions require a proven identity; WS origin lock available via `CORS_ORIGIN`. All behind `RELAY_REQUIRE_AUTH`, now **on**. Verified: relay both modes, real browser under full enforcement (onboard/create/post), unauthed-socket rejection. **Deferred to D5/later:** per-user rate limits + upload quota; the optional cryptographic identity bind (run Gossip WASM in the relay) to remove the TOFU race entirely. | done |
 | **D3. Supervisor + toggle** | Mode C | `supervisor.ts`, bundled relay + livekit, Self-hosting settings panel, Ollama flow (reuse AI-engine page), URL swapping | ~1.5 weeks |
 | **D4. Org self-host** | Mode B | `deploy/` compose + caddy, key generation, invite-link origin adoption, self-host docs | ~0.5 week |

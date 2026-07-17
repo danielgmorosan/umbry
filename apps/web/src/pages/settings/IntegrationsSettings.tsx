@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Mail, Calendar, FileText, NotebookPen, Video, ShieldCheck, ShieldAlert } from "lucide-react";
 import { SettingsPage } from "./SettingsLayout";
-import { SearchFilterTabs } from "@gossip/ui/stack";
+import { SearchFilterTabs } from "@umbry/ui/stack";
 import { integrations, type IntegrationDef } from "@/data/mock";
 import { cn } from "@/lib/utils";
 
