@@ -9,7 +9,16 @@ import { cn } from "@/lib/utils";
  * control-tray gear and is viewport-aware: it flips above/below the anchor
  * depending on room and caps its height so it never runs off-screen.
  */
-export function DevicePicker({ anchor, onClose }: { anchor: HTMLElement | null; onClose: () => void }) {
+export function DevicePicker({
+  anchor,
+  onClose,
+  kinds = ["audioinput", "audiooutput", "videoinput"],
+}: {
+  anchor: HTMLElement | null;
+  onClose: () => void;
+  /** Which device groups to show — lets the mic and camera buttons each open a focused picker. */
+  kinds?: MediaDeviceKind[];
+}) {
   const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
   const [speakers, setSpeakers] = useState<MediaDeviceInfo[]>([]);
   const [cams, setCams] = useState<MediaDeviceInfo[]>([]);
@@ -76,17 +85,24 @@ export function DevicePicker({ anchor, onClose }: { anchor: HTMLElement | null; 
       style={{ left: pos?.left ?? -9999, top: pos?.top, bottom: pos?.bottom, maxHeight: pos?.maxHeight }}
       className="fixed z-[70] flex w-72 flex-col overflow-hidden rounded-card border border-line bg-paper font-stack shadow-[var(--st-shadow-card)]"
     >
-      <div className="shrink-0 border-b border-line px-3 py-2 text-[13px] font-semibold text-ink">Audio &amp; video</div>
+      <div className="shrink-0 border-b border-line px-3 py-2 text-[13px] font-semibold text-ink">
+        {kinds.includes("videoinput") && !kinds.includes("audioinput") ? "Camera" : kinds.includes("videoinput") ? "Audio & video" : "Microphone & speaker"}
+      </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
-        <DeviceGroup icon={<Mic className="size-4" />} label="Input device" devices={mics} kind="audioinput" activeId={inputId} />
-        {speakerSelectable ? (
-          <DeviceGroup icon={<Volume2 className="size-4" />} label="Output device" devices={speakers} kind="audiooutput" activeId={outputId} />
-        ) : (
-          <p className="px-2 py-2 text-[11.5px] leading-relaxed text-ink-faint">
-            Speaker selection isn't supported in this browser - it uses your system default.
-          </p>
+        {kinds.includes("audioinput") && (
+          <DeviceGroup icon={<Mic className="size-4" />} label="Input device" devices={mics} kind="audioinput" activeId={inputId} />
         )}
-        {cams.length > 0 && <DeviceGroup icon={<Video className="size-4" />} label="Camera" devices={cams} kind="videoinput" activeId="" />}
+        {kinds.includes("audiooutput") &&
+          (speakerSelectable ? (
+            <DeviceGroup icon={<Volume2 className="size-4" />} label="Output device" devices={speakers} kind="audiooutput" activeId={outputId} />
+          ) : (
+            <p className="px-2 py-2 text-[11.5px] leading-relaxed text-ink-faint">
+              Speaker selection isn't supported in this browser - it uses your system default.
+            </p>
+          ))}
+        {kinds.includes("videoinput") && cams.length > 0 && (
+          <DeviceGroup icon={<Video className="size-4" />} label="Camera" devices={cams} kind="videoinput" activeId="" />
+        )}
       </div>
     </div>
   );

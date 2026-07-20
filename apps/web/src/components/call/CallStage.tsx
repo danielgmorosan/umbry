@@ -9,7 +9,7 @@ import {
   useTracks,
   type TrackReferenceOrPlaceholder,
 } from "@livekit/components-react";
-import { Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff, MessageSquareText, VolumeX, Volume2, X, Maximize, Minimize, Settings2, Headphones, MonitorPlay } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff, MessageSquareText, VolumeX, Volume2, X, Maximize, Minimize, Headphones, MonitorPlay, ChevronDown } from "lucide-react";
 import { CallReactionOverlay, CallReactionButton } from "@/components/call/CallReactions";
 import { Tooltip } from "@umbry/ui/stack";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -44,9 +44,10 @@ export function CallStage({ target }: { target: CallTarget }) {
   const [chatOpen, setChatOpen] = useState(true);
   // Whose screenshare we're actively watching (Discord-style: don't auto-open).
   const [watching, setWatching] = useState<string | null>(null);
-  const [devicesOpen, setDevicesOpen] = useState(false);
+  const [picker, setPicker] = useState<"audio" | "video" | null>(null);
   const [camSettingsOpen, setCamSettingsOpen] = useState(false);
-  const devicesBtn = useRef<HTMLButtonElement>(null);
+  const micBtn = useRef<HTMLButtonElement>(null);
+  const camBtn = useRef<HTMLButtonElement>(null);
   const room = useRoomContext();
   // Right-click volume menu (T3): { cursor position, whose audio }.
   const [menu, setMenu] = useState<{ x: number; y: number; participant: Participant } | null>(null);
@@ -263,20 +264,25 @@ export function CallStage({ target }: { target: CallTarget }) {
           is always reachable - on a narrow phone the other controls scroll
           horizontally rather than pushing Leave off-screen. */}
       <div className="relative flex h-16 shrink-0 items-center gap-2 border-t border-line bg-paper px-3 md:px-4">
-        {devicesOpen && <DevicePicker anchor={devicesBtn.current} onClose={() => setDevicesOpen(false)} />}
+        {picker && (
+          <DevicePicker
+            anchor={picker === "audio" ? micBtn.current : camBtn.current}
+            kinds={picker === "audio" ? ["audioinput", "audiooutput"] : ["videoinput"]}
+            onClose={() => setPicker(null)}
+          />
+        )}
         <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 overflow-x-auto md:gap-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <CallButton label={mic ? "Mute microphone" : "Unmute microphone"} off={!mic} onClick={() => void toggleMic()}>
             {mic ? <Mic className="size-5" /> : <MicOff className="size-5" />}
           </CallButton>
+          <DeviceChevron ref={micBtn} label="Audio devices" open={picker === "audio"} onClick={() => setPicker((p) => (p === "audio" ? null : "audio"))} />
           <CallButton label={deafened ? "Undeafen" : "Deafen (mute everyone + mic)"} off={deafened} onClick={() => void toggleDeafen()}>
             {deafened ? <VolumeX className="size-5" /> : <Headphones className="size-5" />}
-          </CallButton>
-          <CallButton ref={devicesBtn} label="Audio & video devices" active={devicesOpen} onClick={() => setDevicesOpen((o) => !o)}>
-            <Settings2 className="size-5" />
           </CallButton>
           <CallButton label={cam ? "Turn camera off" : "Turn camera on"} off={!cam} onClick={() => void toggleCam()}>
             {cam ? <Video className="size-5" /> : <VideoOff className="size-5" />}
           </CallButton>
+          <DeviceChevron ref={camBtn} label="Camera devices" open={picker === "video"} onClick={() => setPicker((p) => (p === "video" ? null : "video"))} />
           <CallButton label={screen ? "Stop sharing" : "Share screen"} active={screen} onClick={() => void toggleScreen()}>
             <MonitorUp className="size-5" />
           </CallButton>
@@ -416,3 +422,23 @@ const CallButton = forwardRef<HTMLButtonElement, {
     </Tooltip>
   );
 });
+CallButton.displayName = "CallButton";
+
+/** Narrow dropdown-chevron beside the mic/camera buttons — opens that device's picker. */
+const DeviceChevron = forwardRef<HTMLButtonElement, { label: string; open: boolean; onClick: () => void }>(
+  ({ label, open, onClick }, ref) => (
+    <button
+      ref={ref}
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={cn(
+        "grid h-11 w-7 shrink-0 place-items-center rounded-card transition-colors",
+        open ? "bg-ink text-paper" : "bg-field text-ink-mute hover:text-ink",
+      )}
+    >
+      <ChevronDown className="size-4" />
+    </button>
+  ),
+);
+DeviceChevron.displayName = "DeviceChevron";
