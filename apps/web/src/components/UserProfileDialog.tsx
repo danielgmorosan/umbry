@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { MessageSquareText, Phone, Copy, Check, ShieldCheck, Pencil } from "lucide-react";
+import { MessageSquareText, Phone, Copy, Check, ShieldCheck, Pencil, Ban } from "lucide-react";
 import { Button, Input, StackModal, ModalBody } from "@umbry/ui/stack";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useRelay } from "@/stores/useRelay";
 import { useSession } from "@/stores/useSession";
 import { useContacts } from "@/stores/useContacts";
+import { useBlocks } from "@/stores/useBlocks";
 import { useStartDm } from "@/lib/useStartDm";
 import { truncateHandle } from "@/lib/utils";
 
@@ -30,6 +31,7 @@ export function UserProfileDialog({
   const [copied, setCopied] = useState(false);
   const [poked, setPoked] = useState(0);
   const me = userId === myId;
+  const isBlk = useBlocks((s) => s.blocked.includes(userId));
 
   // Nickname (T3): your local label for this contact - SDK-persisted, shows
   // everywhere in your DMs. Only editable once they're actually a contact.
@@ -136,6 +138,15 @@ export function UserProfileDialog({
                 <span aria-hidden>🦆</span> {poked > 1 ? `Poked ×${poked}` : poked === 1 ? "Poked!" : "Poke"}
               </Button>
             </div>
+          )}
+          {!me && (
+            <Button
+              variant={isBlk ? "secondary" : "danger"}
+              className="mt-2 w-full"
+              onClick={() => (isBlk ? useBlocks.getState().unblock(userId) : useBlocks.getState().block(userId))}
+            >
+              <Ban className="size-4" /> {isBlk ? "Unblock" : "Block"}
+            </Button>
           )}
         </div>
       </ModalBody>

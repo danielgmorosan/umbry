@@ -6,6 +6,7 @@ import { UserAvatar as Avatar } from "@/components/UserAvatar";
 import { useSession } from "@/stores/useSession";
 import { useRelay } from "@/stores/useRelay";
 import { useContacts, useContactsLive } from "@/stores/useContacts";
+import { useBlocks } from "@/stores/useBlocks";
 import { useNotifications } from "@/stores/useNotifications";
 import { NewDmDialog } from "@/components/chat/NewDmDialog";
 import { CallSidebarPanel } from "@/components/CallDock";
@@ -40,7 +41,9 @@ export function DmSidebar() {
   const [profile, setProfile] = useState<{ id: string; name: string } | null>(null);
 
   const sessionStatus = useSession((s) => s.status);
-  const contacts = useContacts((s) => s.contacts);
+  const allContacts = useContacts((s) => s.contacts);
+  const blocked = useBlocks((s) => s.blocked);
+  const contacts = allContacts.filter((c) => !blocked.includes(c.userId)); // blocked → hidden from DMs
   useContactsLive();
 
   // Watch online presence for every DM contact (T3).

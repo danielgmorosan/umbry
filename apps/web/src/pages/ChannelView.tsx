@@ -3,6 +3,7 @@ import { useParams, useSearchParams, Link, Navigate } from "react-router-dom";
 import { useNick } from "@/stores/useContacts";
 import { toPlainText } from "@/lib/messageText";
 import { ForwardDialog } from "@/components/chat/ForwardDialog";
+import { useBlocks } from "@/stores/useBlocks";
 import { Hash, Lock, Phone, Video, Sparkles, Users, ShieldAlert, Circle, MessageSquareReply, Pencil, Reply } from "lucide-react";
 import { PaneHeader, HeaderIconButton } from "@/components/chat/PaneHeader";
 import { Composer } from "@/components/chat/Composer";
@@ -200,7 +201,11 @@ export function ChannelView({ embedded }: { embedded?: boolean } = {}) {
   );
 
   // Main feed shows only thread roots / plain messages; replies live in the panel.
-  const feed = useMemo(() => messages.filter((m) => !m.threadRootId), [messages]);
+  const blocked = useBlocks((s) => s.blocked);
+  const feed = useMemo(
+    () => messages.filter((m) => !m.threadRootId && !blocked.includes(m.senderId)),
+    [messages, blocked],
+  );
   const replyStats = useMemo(() => {
     const map = new Map<string, { count: number; lastTs: number }>();
     for (const m of messages) {
