@@ -6,6 +6,24 @@ import { useAudioSettings } from "@/stores/useAudioSettings";
 import { useVideoSettings } from "@/stores/useVideoSettings";
 import { applyCameraBackground } from "@/lib/cameraBackground";
 import { pickScreenSource } from "@/lib/desktopScreenPicker";
+import { canCaptureDesktopAudio, startDesktopShareAudio, type DesktopAudioCapture } from "@/lib/desktopAudioCapture";
+
+// Echo-free screenshare audio: the desktop shell captures process-excluded
+// system audio and we publish it as ScreenShareAudio, instead of getDisplayMedia's
+// systemAudio loopback (which re-broadcasts the call → everyone hears themselves).
+// See docs/screenshare-audio.md. Held module-level so leave()/disable can stop it.
+let shareAudioCapture: DesktopAudioCapture | null = null;
+function stopShareAudioCapture(room: Room | null): void {
+  if (!shareAudioCapture) return;
+  const cap = shareAudioCapture;
+  shareAudioCapture = null;
+  try {
+    room?.localParticipant.unpublishTrack(cap.track);
+  } catch {
+    /* already gone */
+  }
+  cap.stop();
+}
 
 // Reloading mid-call would silently drop the call - ask first (browsers show
 // their own generic wording; registering the handler is what arms the prompt).
@@ -176,6 +194,7 @@ export const useCall = create<CallState>((set, get) => {
             console.warn("[call] disconnected by server, reason:", DisconnectReason[reason] ?? reason);
           }
           if (get().room === room) {
+            stopShareAudioCapture(room); // was sharing when the socket died
             // T4: network-ish deaths (backgrounded mobile tab, flaky signal)
             // auto-rejoin instead of ending the call for good.
             const willRejoin = unexpected && shouldAutoRejoin(reason) && !!rejoinFn;
@@ -258,6 +277,7 @@ export const useCall = create<CallState>((set, get) => {
       const room = get().room;
       const target = get().target;
       const wasAlone = !!room && room.remoteParticipants.size === 0;
+      stopShareAudioCapture(room); // release the AudioContext + stop the shell's capture
       // User-initiated: never auto-rejoin after an explicit leave (T4).
       rejoinFn = null;
       pendingRejoin = false;
@@ -314,33 +334,50 @@ export const useCall = create<CallState>((set, get) => {
       const r = get().room;
       if (!r) return;
       const enabling = !get().screen;
+
+      // Disabling: tear down the native audio capture (if any) first, then stop
+      // the video share.
+      if (!enabling) {
+        stopShareAudioCapture(r);
+        try {
+          await r.localParticipant.setScreenShareEnabled(false);
+        } catch {
+          /* nothing to stop */
+        }
+        syncLocal();
+        set({ screenAudioMissing: false });
+        return;
+      }
+
       // In the desktop shell the OS picker is unavailable, so ask which source
       // to share with our own dialog first; the shell resolves getDisplayMedia
-      // to that pick. "unavailable" means we're in a browser (or enumeration
-      // failed) - let getDisplayMedia show the native picker as usual.
-      // Tracks whether audio was actually asked for, so the "no sound" hint
-      // below doesn't scold someone who deliberately unticked the box.
+      // to that pick. "unavailable" means a browser (or enumeration failed) —
+      // let getDisplayMedia show the native picker as usual. audioWanted tracks
+      // whether audio was actually asked for, so the "no sound" hint below
+      // doesn't scold someone who deliberately unticked the box.
       let audioWanted = true;
-      if (enabling) {
-        const pick = await pickScreenSource();
-        if (pick.status === "cancelled") return;
-        if (pick.status === "picked") audioWanted = pick.audio;
-      }
-      // T4: user-selected share quality (Settings → Calls). "source" keeps the
-      // native size; the resolution constraint is an ideal, so oversizing it
-      // just means "don't downscale".
+      const pick = await pickScreenSource();
+      if (pick.status === "cancelled") return;
+      if (pick.status === "picked") audioWanted = pick.audio;
+
+      // Echo-free path: on the desktop shell we take audio from the native
+      // process-excluded capture (published separately below) instead of the
+      // browser's systemAudio loopback, which re-broadcasts the call playback.
+      const useNative = audioWanted && canCaptureDesktopAudio();
+      const loopbackAudio = audioWanted && !useNative; // browser system-audio path
+
+      // T4: user-selected share quality (Settings → Calls). The resolution
+      // constraint is an ideal, so oversizing just means "don't downscale".
       const v = useVideoSettings.getState();
       const dims = v.shareRes === "1080" ? { width: 1920, height: 1080 } : v.shareRes === "720" ? { width: 1280, height: 720 } : { width: 3840, height: 2160 };
       try {
-        // audio: true → the browser's share picker offers "also share audio"
-        // (tab audio anywhere; system audio on Windows when sharing a screen).
-        // Without it the picker never even shows the checkbox.
-        await r.localParticipant.setScreenShareEnabled(enabling, {
-          audio: true,
+        await r.localParticipant.setScreenShareEnabled(true, {
+          // Native path shares video only; the loopback path also grabs system
+          // audio (tab audio anywhere; system audio on Windows for a screen share).
+          audio: loopbackAudio,
           // Let people share the Umbry tab itself (demos) instead of hiding it.
           selfBrowserSurface: "include",
-          // Windows Chrome: pre-tick the "share system audio" option for screen shares.
-          systemAudio: "include",
+          ...(loopbackAudio ? { systemAudio: "include" as const } : {}),
           resolution: { ...dims, frameRate: v.shareFps },
           contentHint: v.sharePrioritize === "motion" ? "motion" : "detail",
         }, {
@@ -353,19 +390,37 @@ export const useCall = create<CallState>((set, get) => {
             priority: "high",
           },
           // "detail" holds resolution and sheds frames (right for text/code);
-          // "motion" does the opposite (right for video/gameplay). Stating it
-          // explicitly stops the encoder from guessing under CPU pressure.
+          // "motion" does the opposite (right for video/gameplay).
           degradationPreference: v.sharePrioritize === "motion" ? "maintain-framerate" : "maintain-resolution",
         });
       } catch {
         // User cancelled the share picker - not an error.
+        return;
       }
+
+      // Publish the native audio track alongside the video share. On failure the
+      // video still shares (just no audio) — we never fall back to the echoing
+      // loopback.
+      if (useNative) {
+        try {
+          const cap = await startDesktopShareAudio();
+          if (cap) {
+            await r.localParticipant.publishTrack(cap.track, { source: Track.Source.ScreenShareAudio, name: "screen-audio" });
+            shareAudioCapture = cap;
+          }
+        } catch {
+          stopShareAudioCapture(r);
+        }
+      }
+
       syncLocal();
       // Sharing but no audio track came with it (window share, unchecked box,
-      // or Firefox - which can't capture display audio at all): tell the
-      // sharer, so silence isn't a mystery on the other end.
+      // Firefox, or native capture failed): tell the sharer, so silence isn't a
+      // mystery on the other end.
       const sharingNow = get().screen;
-      const hasShareAudio = !!r.localParticipant.getTrackPublication(Track.Source.ScreenShareAudio);
+      const hasShareAudio = useNative
+        ? !!shareAudioCapture
+        : !!r.localParticipant.getTrackPublication(Track.Source.ScreenShareAudio);
       set({ screenAudioMissing: sharingNow && audioWanted && !hasShareAudio });
     },
   };

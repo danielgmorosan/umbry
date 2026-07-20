@@ -14,9 +14,20 @@ function bridge(): AudioCaptureBridge | null {
   return w.umbryDesktop?.audioCapture ?? null;
 }
 
-/** True when the desktop shell can supply screenshare audio natively. */
+/**
+ * True when the desktop shell can supply screenshare audio natively AND the
+ * experimental path is enabled. Gated OFF by default so releases keep today's
+ * screenshare behaviour while the pipeline is being validated: the Phase 1
+ * source is a TEST TONE (not real audio), so it must not reach normal users.
+ * Enable to test: `localStorage.setItem("umbry-native-share-audio","1")`.
+ */
 export function canCaptureDesktopAudio(): boolean {
-  return bridge() != null;
+  if (bridge() == null) return false;
+  try {
+    return localStorage.getItem("umbry-native-share-audio") === "1";
+  } catch {
+    return false;
+  }
 }
 
 export interface DesktopAudioCapture {
