@@ -256,24 +256,45 @@ export function playBell() {
   }
 }
 
-export type SoundName = "quack" | "crickets" | "applause" | "airhorn" | "drumroll" | "bell";
+export type SoundName = "quack" | "crickets" | "airhorn" | "badumtss" | "bomboclat" | "wallahi";
 
-/** Play a named soundboard sound. */
-export function playSound(name: SoundName) {
-  switch (name) {
-    case "quack":
-      return playQuack();
-    case "crickets":
-      return playCrickets();
-    case "applause":
-      return playApplause();
-    case "airhorn":
-      return playAirhorn();
-    case "drumroll":
-      return playDrumroll();
-    case "bell":
-      return playBell();
+// Soundboard clips are now real audio files (apps/web/public/sounds), served
+// same-origin so they work under COEP and offline. Decoded once and cached; the
+// synthesized playX() below are kept only for the notification blips (playQuack).
+const SOUND_FILES: Record<SoundName, string> = {
+  quack: "/sounds/quack.mp3",
+  crickets: "/sounds/crickets.mp3",
+  airhorn: "/sounds/airhorn.mp3",
+  badumtss: "/sounds/badumtss.mp3",
+  bomboclat: "/sounds/bomboclat.mp3",
+  wallahi: "/sounds/wallahi.mp3",
+};
+const soundBuffers = new Map<SoundName, Promise<AudioBuffer | null>>();
+
+function loadSound(c: AudioContext, name: SoundName): Promise<AudioBuffer | null> {
+  let p = soundBuffers.get(name);
+  if (!p) {
+    p = fetch(SOUND_FILES[name])
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`${r.status}`))))
+      .then((ab) => c.decodeAudioData(ab))
+      .catch(() => null);
+    soundBuffers.set(name, p);
   }
+  return p;
+}
+
+/** Play a named soundboard sound (a real audio file, tamed to a sane level). */
+export async function playSound(name: SoundName) {
+  const c = audioCtx();
+  if (!c) return;
+  const buf = await loadSound(c, name);
+  if (!buf) return;
+  const src = c.createBufferSource();
+  src.buffer = buf;
+  const gain = c.createGain();
+  gain.gain.value = 0.7; // files are much hotter than the old synthesis
+  src.connect(gain).connect(c.destination);
+  src.start();
 }
 
 let ringTimer: ReturnType<typeof setInterval> | null = null;

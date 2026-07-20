@@ -18,14 +18,14 @@ import { cn } from "@/lib/utils";
 
 // Visual-only quick reactions.
 const REACTIONS = ["👍", "❤️", "😂", "🎉", "😮", "👏", "🔥", "💯"] as const;
-// Soundboard: emoji + a synthesized sound everyone hears.
+// Soundboard: emoji + a real audio clip everyone hears.
 const SOUNDBOARD: { emoji: string; sound: SoundName; label: string }[] = [
   { emoji: "🦆", sound: "quack", label: "Quack" },
   { emoji: "🦗", sound: "crickets", label: "Crickets" },
-  { emoji: "👏", sound: "applause", label: "Applause" },
   { emoji: "📣", sound: "airhorn", label: "Airhorn" },
-  { emoji: "🥁", sound: "drumroll", label: "Drumroll" },
-  { emoji: "🔔", sound: "bell", label: "Bell" },
+  { emoji: "🥁", sound: "badumtss", label: "Ba-dum-tss" },
+  { emoji: "💣", sound: "bomboclat", label: "Bomboclat" },
+  { emoji: "🗣️", sound: "wallahi", label: "Wallahi" },
 ];
 
 interface ReactionMsg {
