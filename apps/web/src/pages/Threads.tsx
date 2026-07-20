@@ -31,8 +31,6 @@ export function Threads() {
       .map(([rootId, replies]) => {
         const root = byId.get(rootId);
         if (!root) return null;
-        const participated = root.senderId === myId || replies.some((r) => r.senderId === myId);
-        if (!participated) return null;
         const last = replies.reduce((a, b) => (a.ts > b.ts ? a : b));
         return { root, replies, last, channelName: channelName(root.channelId) };
       })
@@ -42,12 +40,12 @@ export function Threads() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <PaneHeader title="Threads" subtitle="Conversations you're part of" />
+      <PaneHeader title="Threads" subtitle="Every thread in this workspace's channels" />
       {threads.length === 0 ? (
         <PaneEmptyState
           icon={<MessagesSquare />}
           title="No threads yet"
-          description="Reply to a channel message to start a thread. Threads you take part in show up here."
+          description="Reply to a channel message to start a thread. Every thread in the channels you've opened shows up here."
         />
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">

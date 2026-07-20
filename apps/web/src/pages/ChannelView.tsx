@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams, Link, Navigate } from "react-router-dom";
+import { useNick } from "@/stores/useContacts";
+import { toPlainText } from "@/lib/messageText";
 import { Hash, Lock, Phone, Video, Sparkles, Users, ShieldAlert, Circle, MessageSquareReply, Pencil, Reply } from "lucide-react";
 import { PaneHeader, HeaderIconButton } from "@/components/chat/PaneHeader";
 import { Composer } from "@/components/chat/Composer";
@@ -167,7 +169,10 @@ export function ChannelView({ embedded }: { embedded?: boolean } = {}) {
 
   const workspace = useRelay((s) => s.workspace);
   const channel = workspace?.channels.find((c) => c.id === channelId);
-  const nameOfMember = (id: string) => workspace?.members.find((x) => x.userId === id)?.name ?? `${id.slice(0, 10)}…`;
+  const nick = useNick();
+  // Your local nickname wins over the relay display name — everywhere in the
+  // channel, not just DMs.
+  const nameOfMember = (id: string) => nick(id, workspace?.members.find((x) => x.userId === id)?.name ?? `${id.slice(0, 10)}…`);
   const conn = useRelay((s) => s.conn);
   const messages = useRelay((s) => s.messagesByChannel[channelId]) ?? [];
   const viewing = useRelay((s) => s.presenceByChannel[channelId]) ?? 0;
@@ -387,7 +392,7 @@ export function ChannelView({ embedded }: { embedded?: boolean } = {}) {
                       title={`View ${mine ? "your" : `${m.senderName}'s`} profile`}
                       className="transition-transform hover:scale-105"
                     >
-                      <Avatar name={m.senderName} id={m.senderId} className="!size-9 !text-[13px]" />
+                      <Avatar name={nick(m.senderId, m.senderName)} id={m.senderId} className="!size-9 !text-[13px]" />
                     </button>
                   )}
                 </div>
@@ -410,9 +415,9 @@ export function ChannelView({ embedded }: { embedded?: boolean } = {}) {
                       <button
                         onClick={() => setProfileUser({ id: m.senderId, name: m.senderName })}
                         className="text-[14px] font-semibold text-ink hover:underline"
-                        title={`View ${mine ? "your" : `${m.senderName}'s`} profile`}
+                        title={`View ${mine ? "your" : `${nick(m.senderId, m.senderName)}'s`} profile`}
                       >
-                        {m.senderName}
+                        {nick(m.senderId, m.senderName)}
                       </button>
                       {mine && <span className="text-[11px] text-ink-faint">you</span>}
                       <span className="text-[11px] text-ink-faint">{formatTime(new Date(m.ts))}</span>
@@ -462,8 +467,8 @@ export function ChannelView({ embedded }: { embedded?: boolean } = {}) {
                 {/* Hover actions */}
                 {!m.deleted && editingId !== m.id && (
                   <MessageActionsBar
-                    copyText={m.body}
-                    shareText={`"${m.body}"\n- ${m.senderName} in #${name}\n${window.location.origin}/w/${workspaceId}/c/${channelId}`}
+                    copyText={toPlainText(m.body)}
+                    shareText={`"${toPlainText(m.body)}"\n- ${nick(m.senderId, m.senderName)} in #${name}\n${window.location.origin}/w/${workspaceId}/c/${channelId}`}
                     className="absolute -top-2.5 right-4 hidden group-hover:flex group-focus-within:flex"
                   >
                     <AddReactionButton onPick={(emoji) => useRelay.getState().reactToMessage(workspaceId, channelId, m.id, emoji)} />

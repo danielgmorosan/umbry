@@ -119,6 +119,18 @@ export const useContacts = create<ContactsState>((set, get) => ({
   },
 }));
 
+/**
+ * Nickname resolver: your local contact rename overlaid on any display name.
+ * A Contact's userId is the same gossip handle used as a channel message's
+ * senderId and a workspace member's userId, so the same rename applies
+ * everywhere — channels, threads, members, and DMs, not just DMs. Subscribes to
+ * `contacts` so renders update the moment a nickname changes.
+ */
+export function useNick(): (userId: string, fallback: string) => string {
+  const contacts = useContacts((s) => s.contacts);
+  return (userId, fallback) => contacts.find((c) => c.userId === userId)?.name || fallback;
+}
+
 /** Keep the contact list fresh while the session is open (initial refresh + SDK events). */
 export function useContactsLive() {
   const sessionStatus = useSession((s) => s.status);

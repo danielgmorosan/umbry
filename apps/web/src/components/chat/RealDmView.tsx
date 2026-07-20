@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
+import { toPlainText } from "@/lib/messageText";
 import { ShieldCheck, Check, Lock, Phone, Video } from "lucide-react";
 import { PaneHeader, HeaderIconButton } from "@/components/chat/PaneHeader";
 import { Composer } from "@/components/chat/Composer";
@@ -436,8 +437,8 @@ export function RealDmView({ peerId, peerName, embedded }: { peerId: string; pee
             const canMutate = mine && !isSelf && !deleted && m.id != null;
             const actions = !deleted ? (
               <MessageActionsBar
-                copyText={m.content}
-                shareText={`"${m.content}"\n- ${attribution}, ${formatTime(new Date(m.timestamp))}`}
+                copyText={toPlainText(m.content)}
+                shareText={`"${toPlainText(m.content)}"\n- ${attribution}, ${formatTime(new Date(m.timestamp))}`}
                 className="hidden shrink-0 self-center group-hover:flex group-focus-within:flex"
               >
                 {canMutate && (
