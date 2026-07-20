@@ -288,13 +288,20 @@ function installScreenSourceHandlers(): void {
 const bioVaultFile = (): string => path.join(app.getPath("userData"), "bio-vault.bin");
 
 function installBiometricHandlers(): void {
-  // Can this OS do a native unlock gesture (Touch ID on macOS, Windows Hello on
-  // Windows) AND seal secrets at rest (safeStorage / DPAPI on Windows)?
+  // Windows Hello is gated OFF: the WinRT verification dialog isn't parented to
+  // our window, so it opens behind Umbry / only in the taskbar (bad UX). A clean
+  // fix needs the window-parented interop (RequestVerificationForWindowAsync with
+  // our HWND) via a compiled helper. Until then, Windows unlocks with the password
+  // vault (comparable security). Flip this to re-enable — winHello.ts is kept.
+  const WINDOWS_HELLO_ENABLED = false;
+
+  // Can this OS do a native unlock gesture (Touch ID on macOS) AND seal secrets
+  // at rest (safeStorage / DPAPI)?
   const nativeBioSupported = async (): Promise<boolean> => {
     try {
       if (!safeStorage.isEncryptionAvailable()) return false;
       if (process.platform === "darwin") return systemPreferences.canPromptTouchID();
-      if (process.platform === "win32") return await winHelloAvailable();
+      if (process.platform === "win32") return WINDOWS_HELLO_ENABLED && (await winHelloAvailable());
       return false;
     } catch {
       return false;
@@ -308,7 +315,7 @@ function installBiometricHandlers(): void {
         await systemPreferences.promptTouchID(reason); // throws on cancel/fail
         return true;
       }
-      if (process.platform === "win32") return await winHelloVerify(reason);
+      if (process.platform === "win32") return WINDOWS_HELLO_ENABLED && (await winHelloVerify(reason));
       return false;
     } catch {
       return false;
