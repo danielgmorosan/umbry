@@ -42,6 +42,8 @@ function guardUnload(e: BeforeUnloadEvent) {
 let rejoinFn: (() => Promise<void>) | null = null;
 let pendingRejoin = false;
 let rejoinAttempts = 0;
+// Mic state captured when deafening, so undeafening can restore it.
+let micBeforeDeafen = false;
 
 function shouldAutoRejoin(reason: DisconnectReason | undefined): boolean {
   switch (reason) {
@@ -126,6 +128,8 @@ interface CallState {
   mic: boolean;
   cam: boolean;
   screen: boolean;
+  /** Deafened: all incoming call audio muted (and your mic forced off). */
+  deafened: boolean;
   /** Sharing without an audio track - the browser/picker choice gave no sound (T3 hint). */
   screenAudioMissing: boolean;
   dismissScreenAudioHint: () => void;
@@ -147,6 +151,8 @@ interface CallState {
   toggleMic: () => Promise<void>;
   toggleCam: () => Promise<void>;
   toggleScreen: () => Promise<void>;
+  /** Deafen/undeafen: mute all incoming audio + your mic; undeafen restores it. */
+  toggleDeafen: () => Promise<void>;
   /** Switch the active mic/speaker/camera live during a call (T3, Discord-style). */
   switchDevice: (kind: MediaDeviceKind, deviceId: string) => Promise<void>;
 }
@@ -165,6 +171,7 @@ export const useCall = create<CallState>((set, get) => {
     mic: false,
     cam: false,
     screen: false,
+    deafened: false,
     screenAudioMissing: false,
     dismissScreenAudioHint: () => set({ screenAudioMissing: false }),
     lastDisconnectReason: null,
@@ -262,7 +269,7 @@ export const useCall = create<CallState>((set, get) => {
           /* already down */
         }
         if (get().room === room) {
-          set({ room: null, status: "idle", target: null, mic: false, cam: false, screen: false, screenAudioMissing: false });
+          set({ room: null, status: "idle", target: null, mic: false, cam: false, screen: false, deafened: false, screenAudioMissing: false });
         }
         throw e;
       }
@@ -282,7 +289,7 @@ export const useCall = create<CallState>((set, get) => {
       rejoinFn = null;
       pendingRejoin = false;
       releaseWakeLock();
-      set({ room: null, status: "idle", target: null, mic: false, cam: false, screen: false, screenAudioMissing: false });
+      set({ room: null, status: "idle", target: null, mic: false, cam: false, screen: false, deafened: false, screenAudioMissing: false });
       resetNoiseGate();
       window.removeEventListener("beforeunload", guardUnload);
       if (room) {
@@ -304,7 +311,24 @@ export const useCall = create<CallState>((set, get) => {
     toggleMic: async () => {
       const r = get().room;
       if (!r) return;
-      await r.localParticipant.setMicrophoneEnabled(!get().mic);
+      const enabling = !get().mic;
+      await r.localParticipant.setMicrophoneEnabled(enabling);
+      if (enabling && get().deafened) set({ deafened: false }); // unmuting undeafens
+      syncLocal();
+    },
+
+    toggleDeafen: async () => {
+      const r = get().room;
+      const next = !get().deafened;
+      if (next) {
+        // Deafening mutes your mic too; remember its state to restore on undeafen.
+        micBeforeDeafen = get().mic;
+        if (get().mic && r) await r.localParticipant.setMicrophoneEnabled(false);
+        set({ deafened: true });
+      } else {
+        set({ deafened: false });
+        if (micBeforeDeafen && r) await r.localParticipant.setMicrophoneEnabled(true);
+      }
       syncLocal();
     },
     toggleCam: async () => {

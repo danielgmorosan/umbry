@@ -9,7 +9,7 @@ import {
   useTracks,
   type TrackReferenceOrPlaceholder,
 } from "@livekit/components-react";
-import { Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff, MessageSquareText, VolumeX, X, Maximize, Minimize, Settings2 } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff, MessageSquareText, VolumeX, Volume2, X, Maximize, Minimize, Settings2, Headphones, MonitorPlay } from "lucide-react";
 import { CallReactionOverlay, CallReactionButton } from "@/components/call/CallReactions";
 import { Tooltip } from "@umbry/ui/stack";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -38,9 +38,12 @@ export function CallStage({ target }: { target: CallTarget }) {
   const mic = useCall((s) => s.mic);
   const cam = useCall((s) => s.cam);
   const screen = useCall((s) => s.screen);
+  const deafened = useCall((s) => s.deafened);
   const screenAudioMissing = useCall((s) => s.screenAudioMissing);
-  const { toggleMic, toggleCam, toggleScreen, leave } = useCall.getState();
+  const { toggleMic, toggleCam, toggleScreen, toggleDeafen, leave } = useCall.getState();
   const [chatOpen, setChatOpen] = useState(true);
+  // Whose screenshare we're actively watching (Discord-style: don't auto-open).
+  const [watching, setWatching] = useState<string | null>(null);
   const [devicesOpen, setDevicesOpen] = useState(false);
   const [camSettingsOpen, setCamSettingsOpen] = useState(false);
   const devicesBtn = useRef<HTMLButtonElement>(null);
@@ -96,6 +99,29 @@ export function CallStage({ target }: { target: CallTarget }) {
   // Tiles grow a bit when they have the room to themselves.
   const large = !chatOpen && !screenShare;
 
+  // The hide-chat control only exists while sharing; when it vanishes, make sure
+  // the chat comes back so it can't get stuck hidden with nothing to show.
+  useEffect(() => {
+    if (!screen && !screenShare) setChatOpen(true);
+  }, [screen, screenShare]);
+
+  // Stop watching a stream the moment it ends (the sharer stopped).
+  useEffect(() => {
+    if (watching && screenShare?.participant.identity !== watching) setWatching(null);
+  }, [watching, screenShare]);
+
+  // Stream viewer bits: whose share, its display name, whether we're watching,
+  // and whether its audio is muted (reuses the per-user screen-volume store).
+  const streamHandle = screenShare ? screenShare.participant.identity.split("#")[0] : "";
+  const streamMuted = useCallVolumes((s) => (streamHandle ? (s.volumes[streamHandle]?.screen ?? 1) === 0 : false));
+  const streamerName = screenShare
+    ? screenShare.participant.name || truncateHandle(screenShare.participant.identity, 10, 4)
+    : "";
+  const isWatching = !!screenShare && watching === screenShare.participant.identity;
+  const toggleStreamMute = () => {
+    if (streamHandle) useCallVolumes.getState().setVolume(streamHandle, "screen", streamMuted ? 1 : 0);
+  };
+
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {/* Remote audio is rendered ONCE by the always-mounted CallDock (outside
@@ -104,45 +130,80 @@ export function CallStage({ target }: { target: CallTarget }) {
 
       <div className={cn("relative flex min-h-0 flex-col bg-[#101014]", chatOpen ? "shrink-0" : "flex-1 justify-center")}>
         <CallReactionOverlay />
-        {screenShare && (
-          <>
-            <div
-              ref={shareRef}
-              className={cn("group/share relative min-h-0 p-3 pb-0", !chatOpen && "min-h-[38vh] flex-1")}
-              style={chatOpen ? { height: `${shareVh}vh` } : undefined}
-              onContextMenu={(e) => openMenu(e, screenShare.participant)}
-              title="Right-click for volume"
-            >
-              <VideoTrack trackRef={screenShare} className="h-full w-full rounded-card object-contain" />
-              <button
-                onClick={() => {
-                  // Toggle: exit if we're already fullscreen (anywhere), else
-                  // fullscreen the share area. In fullscreen the group-hover
-                  // affordance can't fire, so this button stays visible.
-                  if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
-                  else void shareRef.current?.requestFullscreen().catch(() => {});
-                }}
-                title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-                aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen screenshare"}
-                className={cn(
-                  "absolute right-5 top-5 grid size-9 place-items-center rounded-control bg-black/60 text-white transition-opacity hover:bg-black/80",
-                  isFullscreen ? "opacity-100" : "opacity-0 group-hover/share:opacity-100",
-                )}
-              >
-                {isFullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
-              </button>
-            </div>
-            {chatOpen && (
+        {screenShare &&
+          (isWatching ? (
+            <>
               <div
-                onPointerDown={startShareResize}
-                title="Drag to resize the screenshare"
-                className="group/handle flex h-4 shrink-0 cursor-row-resize items-center justify-center"
+                ref={shareRef}
+                className={cn("group/share relative min-h-0 p-3 pb-0", !chatOpen && "min-h-[38vh] flex-1")}
+                style={chatOpen ? { height: `${shareVh}vh` } : undefined}
+                onContextMenu={(e) => openMenu(e, screenShare.participant)}
+                title="Right-click for volume"
               >
-                <span className="h-1.5 w-20 rounded-full bg-white/35 transition-colors group-hover/handle:bg-white/70" />
+                <VideoTrack trackRef={screenShare} className="h-full w-full rounded-card object-contain" />
+                {/* Viewer controls: mute the stream's audio, fullscreen, stop watching. */}
+                <div
+                  className={cn(
+                    "absolute right-5 top-5 flex items-center gap-2 transition-opacity",
+                    isFullscreen ? "opacity-100" : "opacity-0 group-hover/share:opacity-100",
+                  )}
+                >
+                  <button
+                    onClick={toggleStreamMute}
+                    title={streamMuted ? "Unmute stream audio" : "Mute stream audio"}
+                    aria-label={streamMuted ? "Unmute stream audio" : "Mute stream audio"}
+                    className="grid size-9 place-items-center rounded-control bg-black/60 text-white hover:bg-black/80"
+                  >
+                    {streamMuted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+                      else void shareRef.current?.requestFullscreen().catch(() => {});
+                    }}
+                    title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                    aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen screenshare"}
+                    className="grid size-9 place-items-center rounded-control bg-black/60 text-white hover:bg-black/80"
+                  >
+                    {isFullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
+                  </button>
+                  <button
+                    onClick={() => setWatching(null)}
+                    title="Stop watching"
+                    aria-label="Stop watching stream"
+                    className="grid size-9 place-items-center rounded-control bg-black/60 text-white hover:bg-black/80"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
               </div>
-            )}
-          </>
-        )}
+              {chatOpen && (
+                <div
+                  onPointerDown={startShareResize}
+                  title="Drag to resize the screenshare"
+                  className="group/handle flex h-4 shrink-0 cursor-row-resize items-center justify-center"
+                >
+                  <span className="h-1.5 w-20 rounded-full bg-white/35 transition-colors group-hover/handle:bg-white/70" />
+                </div>
+              )}
+            </>
+          ) : (
+            // Discord-style: don't auto-open. Show who's streaming + a click to watch.
+            <div className={cn("grid place-items-center p-4", !chatOpen ? "min-h-[38vh] flex-1" : "")} style={chatOpen ? { height: `${shareVh}vh` } : undefined}>
+              <div className="flex flex-col items-center gap-3 rounded-card border border-line bg-paper-2 px-6 py-8 text-center">
+                <span className="grid size-12 place-items-center rounded-full bg-field text-ink">
+                  <MonitorPlay className="size-6" />
+                </span>
+                <div className="text-[14px] font-medium text-ink">{streamerName} is streaming</div>
+                <button
+                  onClick={() => setWatching(screenShare.participant.identity)}
+                  className="rounded-control bg-ink px-4 py-2 text-[13px] font-medium text-paper transition-opacity hover:opacity-90"
+                >
+                  Watch Stream
+                </button>
+              </div>
+            </div>
+          ))}
         <div className="flex max-h-[38vh] shrink-0 flex-wrap items-center justify-center gap-2 overflow-y-auto px-4 py-3">
           {cameras.map((t) => (
             <ParticipantCard
@@ -207,6 +268,9 @@ export function CallStage({ target }: { target: CallTarget }) {
           <CallButton label={mic ? "Mute microphone" : "Unmute microphone"} off={!mic} onClick={() => void toggleMic()}>
             {mic ? <Mic className="size-5" /> : <MicOff className="size-5" />}
           </CallButton>
+          <CallButton label={deafened ? "Undeafen" : "Deafen (mute everyone + mic)"} off={deafened} onClick={() => void toggleDeafen()}>
+            {deafened ? <VolumeX className="size-5" /> : <Headphones className="size-5" />}
+          </CallButton>
           <CallButton ref={devicesBtn} label="Audio & video devices" active={devicesOpen} onClick={() => setDevicesOpen((o) => !o)}>
             <Settings2 className="size-5" />
           </CallButton>
@@ -217,9 +281,13 @@ export function CallStage({ target }: { target: CallTarget }) {
             <MonitorUp className="size-5" />
           </CallButton>
           <CallReactionButton />
-          <CallButton label={chatOpen ? "Hide chat" : "Show chat"} active={chatOpen} onClick={() => setChatOpen((o) => !o)}>
-            <MessageSquareText className="size-5" />
-          </CallButton>
+          {/* Hide-chat is a screenshare/theater affordance (Discord-style): only
+              offered while someone is sharing. Otherwise the chat always shows. */}
+          {(screen || !!screenShare) && (
+            <CallButton label={chatOpen ? "Hide chat" : "Show chat"} active={chatOpen} onClick={() => setChatOpen((o) => !o)}>
+              <MessageSquareText className="size-5" />
+            </CallButton>
+          )}
         </div>
         <span aria-hidden className="h-6 w-px shrink-0 bg-line" />
         <Tooltip label="Leave call">

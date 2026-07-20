@@ -32,6 +32,7 @@ export function CallDock() {
   const mic = useCall((s) => s.mic);
   const cam = useCall((s) => s.cam);
   const screen = useCall((s) => s.screen);
+  const deafened = useCall((s) => s.deafened);
   const { toggleMic, toggleCam, toggleScreen, leave } = useCall.getState();
 
   const [path, setPath] = useState(router.state.location.pathname);
@@ -83,7 +84,7 @@ export function CallDock() {
           a call regardless of navigation - exactly one renderer, always, on
           every page including the call page. (CallStage no longer renders its
           own; two renderers = every track played twice = echo.) */}
-      <RoomAudioRenderer />
+      <RoomAudioRenderer muted={deafened} />
       <PipBridge />
       {!onCallPage && (
         <div
