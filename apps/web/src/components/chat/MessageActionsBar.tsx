@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from "react";
-import { Copy, Check, Share2, Trash2 } from "lucide-react";
+import { Copy, Check, Share2, Trash2, Forward } from "lucide-react";
 import { Tooltip } from "@umbry/ui/stack";
 import { cn } from "@/lib/utils";
 
@@ -15,11 +15,14 @@ import { cn } from "@/lib/utils";
 export function MessageActionsBar({
   copyText,
   shareText,
+  onForward,
   className,
   children,
 }: {
   copyText: string;
   shareText: string;
+  /** Open the forward-to-destination picker for this message (channels + DMs). */
+  onForward?: () => void;
   className?: string;
   children?: ReactNode;
 }) {
@@ -31,6 +34,18 @@ export function MessageActionsBar({
       )}
     >
       {children}
+      {onForward && (
+        <Tooltip label="Forward to…">
+          <button
+            type="button"
+            onClick={onForward}
+            aria-label="Forward message"
+            className="grid size-7 place-items-center rounded-[calc(var(--radius-control)-2px)] text-ink-mute transition-colors hover:bg-field hover:text-ink"
+          >
+            <Forward className="size-3.5" />
+          </button>
+        </Tooltip>
+      )}
       <ClipboardBtn label="Copy text" payload={copyText}>
         <Copy className="size-3.5" />
       </ClipboardBtn>

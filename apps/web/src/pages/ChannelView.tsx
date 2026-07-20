@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams, Link, Navigate } from "react-router-dom";
 import { useNick } from "@/stores/useContacts";
 import { toPlainText } from "@/lib/messageText";
+import { ForwardDialog } from "@/components/chat/ForwardDialog";
 import { Hash, Lock, Phone, Video, Sparkles, Users, ShieldAlert, Circle, MessageSquareReply, Pencil, Reply } from "lucide-react";
 import { PaneHeader, HeaderIconButton } from "@/components/chat/PaneHeader";
 import { Composer } from "@/components/chat/Composer";
@@ -107,6 +108,7 @@ export function ChannelView({ embedded }: { embedded?: boolean } = {}) {
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
   const [membersOpen, setMembersOpen] = useState(false);
   const [profileUser, setProfileUser] = useState<{ id: string; name: string } | null>(null);
+  const [forwardBody, setForwardBody] = useState<string | null>(null);
   const [staged, setStaged] = useState<File[]>([]);
   // Quote-reply target (T3): the DEFAULT reply mode; threads are secondary.
   const [replyTo, setReplyTo] = useState<{ id: string; senderName: string; body: string } | null>(null);
@@ -469,6 +471,7 @@ export function ChannelView({ embedded }: { embedded?: boolean } = {}) {
                   <MessageActionsBar
                     copyText={toPlainText(m.body)}
                     shareText={`"${toPlainText(m.body)}"\n- ${nick(m.senderId, m.senderName)} in #${name}\n${window.location.origin}/w/${workspaceId}/c/${channelId}`}
+                    onForward={m.body ? () => setForwardBody(toPlainText(m.body)) : undefined}
                     className="absolute -top-2.5 right-4 hidden group-hover:flex group-focus-within:flex"
                   >
                     <AddReactionButton onPick={(emoji) => useRelay.getState().reactToMessage(workspaceId, channelId, m.id, emoji)} />
@@ -541,6 +544,7 @@ export function ChannelView({ embedded }: { embedded?: boolean } = {}) {
       {membersOpen && isPrivate && channel && (
         <ChannelMembersDialog workspaceId={workspaceId} channel={channel} onClose={() => setMembersOpen(false)} />
       )}
+      {forwardBody != null && <ForwardDialog body={forwardBody} onClose={() => setForwardBody(null)} />}
       {profileUser && (
         <UserProfileDialog userId={profileUser.id} name={profileUser.name} onClose={() => setProfileUser(null)} />
       )}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { toPlainText } from "@/lib/messageText";
+import { ForwardDialog } from "@/components/chat/ForwardDialog";
 import { ShieldCheck, Check, Lock, Phone, Video } from "lucide-react";
 import { PaneHeader, HeaderIconButton } from "@/components/chat/PaneHeader";
 import { Composer } from "@/components/chat/Composer";
@@ -52,6 +53,7 @@ export function RealDmView({ peerId, peerName, embedded }: { peerId: string; pee
   const [attachNotice, setAttachNotice] = useState<string | null>(null);
   const [staged, setStaged] = useState<File[]>([]);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [forwardBody, setForwardBody] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   // Dropping/picking images only STAGES them (consent + caption) - nothing is
   // encrypted or sent until the user hits Send.
@@ -439,6 +441,7 @@ export function RealDmView({ peerId, peerName, embedded }: { peerId: string; pee
               <MessageActionsBar
                 copyText={toPlainText(m.content)}
                 shareText={`"${toPlainText(m.content)}"\n- ${attribution}, ${formatTime(new Date(m.timestamp))}`}
+                onForward={m.content ? () => setForwardBody(toPlainText(m.content)) : undefined}
                 className="hidden shrink-0 self-center group-hover:flex group-focus-within:flex"
               >
                 {canMutate && (
@@ -531,6 +534,7 @@ export function RealDmView({ peerId, peerName, embedded }: { peerId: string; pee
         />
       </div>
 
+      {forwardBody != null && <ForwardDialog body={forwardBody} onClose={() => setForwardBody(null)} />}
       {profileOpen && !isSelf && (
         <UserProfileDialog userId={peerId} name={peerName || truncateHandle(peerId, 10, 4)} onClose={() => setProfileOpen(false)} />
       )}
