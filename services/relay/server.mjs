@@ -922,6 +922,72 @@ const httpServer = createServer(async (req, res) => {
       return json(200, data); // unfetchable page → empty preview, not an error
     }
   }
+  if (req.method === "GET" && req.url.startsWith("/img?")) {
+    // Image proxy for link-preview thumbnails (og:image, YouTube). The app is
+    // cross-origin-isolated (COEP: require-corp), so a cross-origin thumbnail
+    // without CORP is blocked and the preview renders blank. We fetch it
+    // server-side and re-serve with cross-origin-resource-policy (same trick as
+    // /uploads) — which also keeps the viewer's IP off the third-party CDN, like
+    // /unfurl. Channel previews only (the client never proxies DM urls).
+    const target = new URL(req.url, "http://relay").searchParams.get("url") ?? "";
+    let parsed;
+    try {
+      parsed = new URL(target);
+    } catch {
+      res.writeHead(400);
+      return res.end();
+    }
+    if (!/^https?:$/.test(parsed.protocol) || isPrivateHost(parsed.hostname)) {
+      res.writeHead(400);
+      return res.end();
+    }
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    try {
+      const up = await fetch(parsed.href, {
+        signal: ctrl.signal,
+        redirect: "follow",
+        headers: { "user-agent": "Mozilla/5.0 (compatible; UmbryImg/1.0)", accept: "image/*" },
+      });
+      // Re-check the final URL after redirects so a redirect can't reach an
+      // internal host (partial DNS-rebinding/redirect-SSRF mitigation).
+      try {
+        if (isPrivateHost(new URL(up.url).hostname)) {
+          res.writeHead(400);
+          return res.end();
+        }
+      } catch {
+        /* keep going — parsed.href was already validated */
+      }
+      const type = up.headers.get("content-type") ?? "";
+      if (!up.ok || !type.startsWith("image/") || !up.body) {
+        res.writeHead(404);
+        return res.end();
+      }
+      res.writeHead(200, {
+        "content-type": type,
+        "cross-origin-resource-policy": "cross-origin",
+        "x-content-type-options": "nosniff",
+        "cache-control": "public, max-age=86400",
+      });
+      // Cap at ~10 MB so a hostile URL can't exhaust memory/bandwidth.
+      const reader = up.body.getReader();
+      let size = 0;
+      while (size < 10_000_000) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.length;
+        res.write(Buffer.from(value));
+      }
+      void reader.cancel().catch(() => {});
+      return res.end();
+    } catch {
+      if (!res.headersSent) res.writeHead(502);
+      return res.end();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
   if (req.method === "POST" && req.url === "/livekit-token") {
     if (!livekitConfigured) return json(503, { error: "LiveKit not configured. Set creds in services/relay/.env" });
     try {
