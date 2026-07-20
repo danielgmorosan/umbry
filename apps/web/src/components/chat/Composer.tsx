@@ -148,6 +148,16 @@ export function Composer({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Auto-grow the textarea with its content (up to max-h-44 = 176px) so long
+  // messages are fully visible instead of scrolling inside a single 44px line.
+  // Runs on every value change — typed, pasted, or programmatic (emoji/mention).
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 176)}px`;
+  }, [value]);
+
   // ── @mention picker (T2-05) ────────────────────────────────────────
   const listboxId = useId();
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -594,7 +604,7 @@ export function Composer({
           }}
           rows={1}
           placeholder={hasStaged ? "Add a message… (optional)" : placeholder}
-          className="max-h-44 min-h-[44px] w-full resize-none bg-transparent px-3.5 py-2.5 text-[14px] text-ink outline-none placeholder:text-ink-faint max-sm:text-[16px]"
+          className="max-h-44 min-h-[44px] w-full resize-none overflow-y-auto bg-transparent px-3.5 py-2.5 text-[14px] text-ink outline-none placeholder:text-ink-faint max-sm:text-[16px]"
         />
         <div className={cn("flex items-center justify-between gap-2 px-3 pb-2", recording && "hidden")}>
           <div className="flex items-center gap-2">

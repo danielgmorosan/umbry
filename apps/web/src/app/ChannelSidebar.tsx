@@ -214,9 +214,9 @@ export function ChannelSidebar() {
 
         <div className="mt-2 px-2.5 py-2 text-[11px] leading-relaxed text-ink-faint">
           {sessionStatus === "open" ? (
-            <span className="inline-flex items-center gap-1.5" title="Session unlocked - your full handle is in Settings → Profile">
+            <span className="inline-flex items-center gap-1.5" title="You're signed in — set a display name in Settings → Profile">
               <span className="size-1.5 rounded-full bg-positive" />
-              {useSession.getState().displayName || "unlocked"}
+              {useSession.getState().displayName || "You"}
             </span>
           ) : (
             <button onClick={() => useUnlockPrompt.getState().show()} className="underline underline-offset-2 hover:text-ink">

@@ -18,7 +18,7 @@
  * - Navigation is pinned to the app origin; everything else (external links,
  *   window.open) opens in the system browser instead of an in-app window.
  */
-import { app, BrowserWindow, shell, session, ipcMain, systemPreferences, safeStorage, desktopCapturer, protocol } from "electron";
+import { app, BrowserWindow, shell, session, ipcMain, systemPreferences, safeStorage, desktopCapturer, protocol, Menu, clipboard, type MenuItemConstructorOptions } from "electron";
 import * as path from "node:path";
 import * as fs from "node:fs";
 import { setupUpdater } from "./updater";
@@ -441,6 +441,37 @@ if (!app.requestSingleInstanceLock()) {
       if (origin && target !== origin) {
         event.preventDefault();
         if (/^https?:/.test(url)) void shell.openExternal(url);
+      }
+    });
+
+    // Right-click menu: Chromium's default context menu is off in Electron, so
+    // there was no way to paste into inputs or copy an image. Build a minimal,
+    // context-aware one (editable fields → cut/copy/paste; images → copy image /
+    // copy address; links → copy link; selected text → copy).
+    contents.on("context-menu", (_ev, params) => {
+      const items: MenuItemConstructorOptions[] = [];
+      const f = params.editFlags;
+      if (params.mediaType === "image" && params.srcURL) {
+        items.push({ label: "Copy Image", click: () => contents.copyImageAt(params.x, params.y) });
+        items.push({ label: "Copy Image Address", click: () => clipboard.writeText(params.srcURL) });
+        items.push({ type: "separator" });
+      }
+      if (params.linkURL) {
+        items.push({ label: "Copy Link Address", click: () => clipboard.writeText(params.linkURL) });
+        items.push({ type: "separator" });
+      }
+      if (params.isEditable) {
+        items.push({ label: "Cut", role: "cut", enabled: f.canCut });
+        items.push({ label: "Copy", role: "copy", enabled: f.canCopy });
+        items.push({ label: "Paste", role: "paste", enabled: f.canPaste });
+        items.push({ type: "separator" });
+        items.push({ label: "Select All", role: "selectAll" });
+      } else if (params.selectionText) {
+        items.push({ label: "Copy", role: "copy", enabled: f.canCopy });
+      }
+      if (items.length) {
+        const win = BrowserWindow.fromWebContents(contents);
+        Menu.buildFromTemplate(items).popup(win ? { window: win } : {});
       }
     });
   });

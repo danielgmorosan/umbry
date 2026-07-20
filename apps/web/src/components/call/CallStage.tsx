@@ -136,9 +136,9 @@ export function CallStage({ target }: { target: CallTarget }) {
               <div
                 onPointerDown={startShareResize}
                 title="Drag to resize the screenshare"
-                className="group/handle flex h-2.5 shrink-0 cursor-row-resize items-center justify-center"
+                className="group/handle flex h-4 shrink-0 cursor-row-resize items-center justify-center"
               >
-                <span className="h-1 w-16 rounded-full bg-white/15 transition-colors group-hover/handle:bg-white/40" />
+                <span className="h-1.5 w-20 rounded-full bg-white/35 transition-colors group-hover/handle:bg-white/70" />
               </div>
             )}
           </>
