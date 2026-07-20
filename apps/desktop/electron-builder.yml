@@ -46,9 +46,12 @@ nsis:
   # writes them as hyphens in latest.yml — the mismatch 404s auto-update
   # ("Cannot download"). A hyphenated name keeps asset + manifest identical.
   artifactName: ${productName}-Setup-${version}.${ext}
-  oneClick: false
+  # One-click (Discord/Slack-style): silent per-user install with no wizard, no
+  # directory picker, and no UAC prompt (perMachine:false → %LocalAppData%). The
+  # payoff for auto-update: quitAndInstall applies the update SILENTLY and
+  # relaunches, instead of popping the installer wizard on every update.
+  oneClick: true
   perMachine: false
-  allowToChangeInstallationDirectory: true
   deleteAppDataOnUninstall: false
 
 mac:

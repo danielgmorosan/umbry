@@ -112,6 +112,20 @@ export function UpdatesSettings() {
             </div>
           }
         />
+        {(s?.state === "downloading" || s?.state === "available") && (
+          <div className="px-4 py-3.5">
+            <div className="mb-1.5 flex items-center justify-between text-[12px] text-ink-mute">
+              <span>Downloading {s.newVersion ? `version ${s.newVersion}` : "update"}…</span>
+              <span className="font-mono">{s.percent ?? 0}%</span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-field">
+              <div
+                className="h-full rounded-full bg-ink transition-[width] duration-300 ease-out"
+                style={{ width: `${s.percent ?? 0}%` }}
+              />
+            </div>
+          </div>
+        )}
         {downloaded && (
           <div className="flex items-center justify-between gap-4 px-4 py-3.5">
             <p className="text-[12.5px] leading-relaxed text-ink-mute">
