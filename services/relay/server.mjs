@@ -1087,6 +1087,11 @@ const httpServer = createServer(async (req, res) => {
       "content-length": meta.size,
       "content-disposition": `${inline ? "inline" : "attachment"}; filename="${meta.name}"`,
       "x-content-type-options": "nosniff",
+      // The web/desktop app is cross-origin-isolated (COEP: require-corp) for the
+      // gossip WASM's SharedArrayBuffer. Without this header, the browser blocks
+      // these cross-origin images/audio as CORP violations — attachments silently
+      // fail to render. CORP: cross-origin opts the blobs into being embeddable.
+      "cross-origin-resource-policy": "cross-origin",
       "cache-control": "public, max-age=31536000, immutable",
     });
     createReadStream(file).pipe(res);
