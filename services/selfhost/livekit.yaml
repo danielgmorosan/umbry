@@ -1,0 +1,28 @@
+# LiveKit config for the Umbry self-host stack.
+#
+# API keys are deliberately NOT in this file — they come from the LIVEKIT_KEYS
+# env var (set in docker-compose.yml from .env), so a generated secret never
+# lands in a file that might get committed.
+
+port: 7880
+
+rtc:
+  # UDP is the fast path; this range is published in docker-compose.yml.
+  port_range_start: 50000
+  port_range_end: 50100
+  # TCP fallback for restrictive networks (corporate firewalls, some VPNs).
+  tcp_port: 7881
+  # Don't probe a cloud metadata service for a public IP — this stack runs on a
+  # laptop or a LAN box. The advertised address comes from LIVEKIT_NODE_IP.
+  use_external_ip: false
+
+# Trim the log noise; the relay surfaces call state in the app anyway.
+logging:
+  level: warn
+  pion_level: error
+
+room:
+  # Rooms are created on demand by the relay's token endpoint and should not
+  # linger once the last participant leaves.
+  empty_timeout: 60
+  auto_create: true

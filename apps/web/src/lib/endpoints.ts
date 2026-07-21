@@ -16,6 +16,48 @@
 // as an advanced override only.
 
 const LS_KEY = "umbry-endpoints";
+const MODE_KEY = "umbry-host-mode";
+
+/**
+ * Which infrastructure the app is pointed at.
+ *  - `managed`    — Umbry's hosted relay (the build-time defaults).
+ *  - `selfhosted` — your own relay, local stack or remote.
+ *
+ * Stored separately from the URLs on purpose: flipping back to managed must not
+ * erase the relay URL you configured, so switching modes is reversible in one
+ * click instead of making you retype it.
+ */
+export type HostMode = "managed" | "selfhosted";
+
+/** Default relay for the bundled local stack (services/selfhost). */
+export const LOCAL_STACK_RELAY = "http://localhost:8788";
+
+export function getMode(): HostMode {
+  try {
+    const explicit = localStorage.getItem(MODE_KEY);
+    if (explicit !== null) return explicit === "selfhosted" ? "selfhosted" : "managed";
+    // Pre-0.4.2 there was no mode — a saved relayBase WAS the opt-in. Without
+    // this, upgrading would silently yank those users back onto the managed
+    // relay while their configured URL sat there looking active.
+    if (readOverrides().relayBase) {
+      localStorage.setItem(MODE_KEY, "selfhosted");
+      return "selfhosted";
+    }
+    return "managed";
+  } catch {
+    return "managed";
+  }
+}
+
+export function setMode(mode: HostMode): void {
+  try {
+    if (mode === "selfhosted") localStorage.setItem(MODE_KEY, "selfhosted");
+    else localStorage.removeItem(MODE_KEY);
+  } catch {
+    /* storage disabled — mode just won't persist */
+  }
+  emit();
+}
 
 export interface EndpointOverrides {
   /** Relay base URL, e.g. https://relay.acme.com. Empty string = same origin. */
@@ -82,22 +124,39 @@ export function clearOverrides(): void {
   emit();
 }
 
-/** True when any endpoint is pointed away from the managed defaults. */
+/** True when the app is pointed away from the managed defaults. */
 export function isCustom(): boolean {
-  const o = readOverrides();
-  return Boolean(o.relayBase || o.gossipApiUrl);
+  return getMode() === "selfhosted";
 }
 
-/** Resolved relay base URL (already trailing-slash-trimmed). "" = same origin. */
+/**
+ * Resolved relay base URL (already trailing-slash-trimmed). "" = same origin.
+ * Overrides only apply in self-hosted mode, so the switch is authoritative.
+ */
 export function getRelayBase(): string {
+  if (getMode() === "managed") return BUILD_RELAY_BASE.replace(/\/+$/, "");
   const o = readOverrides();
-  return (o.relayBase ?? BUILD_RELAY_BASE).replace(/\/+$/, "");
+  return (o.relayBase || LOCAL_STACK_RELAY).replace(/\/+$/, "");
 }
 
 /** Resolved Gossip DM protocol base URL. */
 export function getGossipApiUrl(): string {
+  if (getMode() === "managed") return BUILD_GOSSIP_API_URL;
   const o = readOverrides();
-  return o.gossipApiUrl ?? BUILD_GOSSIP_API_URL;
+  return o.gossipApiUrl || BUILD_GOSSIP_API_URL;
+}
+
+/**
+ * Stable per-relay suffix for localStorage keys.
+ *
+ * Relay-scoped state (the workspace list, most obviously) is meaningless on a
+ * different relay: carrying it across a switch shows workspaces that don't
+ * resolve. Keying by relay keeps each relay's state separate, and switching
+ * back restores it intact.
+ */
+export function relayKey(): string {
+  const base = getRelayBase();
+  return base ? base.replace(/^https?:\/\//, "").replace(/[^a-zA-Z0-9._-]/g, "_") : "same-origin";
 }
 
 /** Managed defaults, for display in the settings panel. */

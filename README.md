@@ -88,13 +88,16 @@ The endgame is that **you** run the parts that hold your data. Because everythin
 | Mode | Who runs it | What it's for |
 |---|---|---|
 | **A. Managed** *(today)* | Us (Vercel + Fly) | Zero setup: open the app and talk. DMs still E2EE; channels/AI on our infra. |
-| **B. Org self-host** *(planned)* | Your team, on one server | `docker compose up`: relay + LiveKit + Ollama + auto-TLS. Invite links point clients at it. Nothing touches us. |
-| **C. Fully-local desktop** *(in progress)* | You, on your machine | One toggle in the desktop app spins up a bundled relay, a local LiveKit, and one-click Ollama. Everything runs on your GPU. |
+| **B. Org self-host** *(today)* | Your team, on one server | `docker compose up` in `services/selfhost`: relay + LiveKit + Ollama. Point clients at it; nothing touches us. |
+| **C. Fully-local desktop** *(today)* | You, on your machine | Settings → Self-hosting → **Start local stack**. The desktop app runs the same compose stack for you. |
 
 **Progress:**
 - ✅ **Hardened desktop shell + cross-platform installers** (this repo's `apps/desktop`, built via CI).
 - ✅ **Relay authentication & enforcement** (the security model above), the prerequisite for safely exposing a self-hosted relay.
-- 🔜 **The self-host toggle**: bundle the local services and a Settings switch to flip everything to "run it yourself."
+- ✅ **The self-host mode switch** (0.4.2): Managed ⇄ Self-hosted in Settings, with a one-click local stack and in-app model downloads.
+- 🔜 **Auto-TLS + invite links that carry the relay URL**, so teammates join a self-hosted deployment without typing one.
+
+> **Note on AI:** the model runs wherever the *relay* runs. On the managed relay there is no model — AI requires self-hosted mode. See [`services/selfhost`](services/selfhost).
 
 ## Features
 

@@ -22,6 +22,19 @@ files:
 extraResources:
   - from: ../web/dist
     to: web
+  # Self-host stack templates (Mode B). Copied out to userData on first start so
+  # `docker compose` has a writable project dir — see src/selfhost.ts.
+  - from: ../../services/selfhost
+    to: stack/selfhost
+    filter:
+      - docker-compose.yml
+      - livekit.yaml
+  - from: ../../services/relay
+    to: stack/relay
+    filter:
+      - Dockerfile
+      - package.json
+      - server.mjs
 
 # Don't rebuild native modules (there are none) — avoids pnpm/monorepo hoisting
 # issues during packaging.

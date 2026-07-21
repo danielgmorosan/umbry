@@ -59,7 +59,29 @@ contextBridge.exposeInMainWorld("umbryDesktop", {
       return () => ipcRenderer.removeListener("umbry:audio:frame", listener);
     },
   },
+  // D3: local self-host stack (relay + LiveKit + Ollama) via docker compose.
+  // Desktop-only — a browser tab has no business starting containers.
+  stack: {
+    status: (): Promise<StackStatus> => ipcRenderer.invoke("umbry:stack:status"),
+    up: (): Promise<StackStatus> => ipcRenderer.invoke("umbry:stack:up"),
+    down: (): Promise<StackStatus> => ipcRenderer.invoke("umbry:stack:down"),
+  },
 });
+
+interface StackService {
+  name: string;
+  state: string;
+  running: boolean;
+}
+
+interface StackStatus {
+  dockerAvailable: boolean;
+  daemonRunning: boolean;
+  services: StackService[];
+  running: boolean;
+  relayUrl: string;
+  error?: string;
+}
 
 interface UpdaterStatus {
   version: string;

@@ -4,6 +4,7 @@ import { useNotifications, mentionsUser } from "./useNotifications";
 import { useAvatars } from "./useAvatars";
 import { useStatus } from "./useStatus";
 import { relayWsUrl } from "@/lib/relayBase";
+import { relayKey } from "@/lib/endpoints";
 import { ensureAuthKey, authPublicKeySync, signChallenge } from "@/lib/relayAuth";
 
 export interface ChannelMsg {
@@ -90,16 +91,31 @@ export interface MyWorkspace {
 
 type ConnState = "idle" | "connecting" | "open" | "closed";
 
-const MY_WS_KEY = "gossip-my-workspaces";
+// Scoped to the active relay: a workspace list from one relay doesn't resolve
+// on another, so an unscoped key made every self-host switch look broken. The
+// legacy unscoped key is migrated into the managed relay's slot once.
+const LEGACY_WS_KEY = "gossip-my-workspaces";
+const myWsKey = () => `gossip-my-workspaces:${relayKey()}`;
+
 function loadMyWorkspaces(): MyWorkspace[] {
   try {
-    return JSON.parse(localStorage.getItem(MY_WS_KEY) ?? "[]");
+    const scoped = localStorage.getItem(myWsKey());
+    if (scoped !== null) return JSON.parse(scoped);
+    // One-time migration: pre-0.4.2 installs stored one global list, which
+    // belonged to whatever relay was in use — the managed one, in practice.
+    const legacy = localStorage.getItem(LEGACY_WS_KEY);
+    if (legacy !== null) {
+      localStorage.setItem(myWsKey(), legacy);
+      localStorage.removeItem(LEGACY_WS_KEY);
+      return JSON.parse(legacy);
+    }
+    return [];
   } catch {
     return [];
   }
 }
 function saveMyWorkspaces(list: MyWorkspace[]) {
-  localStorage.setItem(MY_WS_KEY, JSON.stringify(list));
+  localStorage.setItem(myWsKey(), JSON.stringify(list));
 }
 
 interface RelayState {

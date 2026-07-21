@@ -1,0 +1,87 @@
+# Umbry self-host stack — relay + LiveKit + Ollama on one network.
+#
+# This is Mode B from the README: everything that isn't already end-to-end
+# encrypted (channels, calls, files, AI) running on hardware you control.
+# DMs never touch it — they ride the Gossip network E2EE regardless.
+#
+#   docker compose up -d
+#
+# Then point Umbry at http://localhost:8788 in Settings -> Self-hosting.
+# The desktop app writes the .env and runs this for you; the file is committed
+# so `docker compose up` by hand works identically.
+#
+# Env comes from `.env` (see .env.example). UMBRY_HOST is the address CLIENTS
+# use to reach this box: "localhost" for your own machine, or the LAN IP /
+# domain when teammates connect.
+
+name: umbry
+
+services:
+  relay:
+    build:
+      context: ../relay
+    restart: unless-stopped
+    ports:
+      - "${RELAY_PORT:-8788}:8788"
+    environment:
+      DATA_DIR: /data
+      # Browser-facing LiveKit address, handed to clients via /livekit-config.
+      LIVEKIT_URL: "ws://${UMBRY_HOST:-localhost}:${LIVEKIT_PORT:-7880}"
+      # Container-network address for the RoomService admin API. Differs from
+      # the above on purpose — see LIVEKIT_SERVER_URL in services/relay/server.mjs.
+      LIVEKIT_SERVER_URL: "http://livekit:7880"
+      LIVEKIT_API_KEY: "${LIVEKIT_API_KEY}"
+      LIVEKIT_API_SECRET: "${LIVEKIT_API_SECRET}"
+      # The whole point of the stack: the relay reaches Ollama over the compose
+      # network, so the model genuinely runs on this machine.
+      OLLAMA_URL: "http://ollama:11434"
+      AI_ROUTE: local
+      AI_MODEL: "${AI_MODEL:-qwen2.5:7b}"
+      # Browsers block cross-origin XHR unless the relay allows the app origin.
+      # "*" is fine for a laptop; pin it to your app URL for a shared server.
+      CORS_ORIGIN: "${CORS_ORIGIN:-*}"
+      RELAY_REQUIRE_AUTH: "${RELAY_REQUIRE_AUTH:-1}"
+    volumes:
+      - relay_data:/data
+    depends_on:
+      - livekit
+      - ollama
+
+  livekit:
+    image: livekit/livekit-server:v1.8
+    restart: unless-stopped
+    command: --config /etc/livekit.yaml
+    ports:
+      - "${LIVEKIT_PORT:-7880}:7880"   # signaling (WebSocket)
+      - "7881:7881"                     # RTC over TCP, the fallback when UDP is blocked
+      - "50000-50100:50000-50100/udp"   # RTC media
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
+      # Advertised address for media candidates. On a laptop this stays
+      # localhost; for teammates set UMBRY_HOST to the LAN IP or domain.
+      LIVEKIT_NODE_IP: "${UMBRY_HOST:-127.0.0.1}"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    # Not published by default — only the relay needs it, and exposing an
+    # unauthenticated model server on the network is a bad default.
+    expose:
+      - "11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    # GPU acceleration: uncomment if you have NVIDIA + the container toolkit.
+    # Without it Ollama runs on CPU, which works but is slow on large models.
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+volumes:
+  relay_data:
+  ollama_models:

@@ -30,7 +30,23 @@ Then set `VITE_RELAY_URL=https://<fly-app>.fly.dev` in the Vercel project's env 
 workspace/channel history survives deploys and restarts. `CORS_ORIGIN` must be set once the web app
 and relay are on different origins, otherwise the browser will block the cross-origin requests.
 
+## Running it yourself
+
+For self-hosting, use [`services/selfhost`](../selfhost) rather than this directory directly — it
+brings the relay up alongside LiveKit and Ollama on one network, which is what makes calls and AI
+work without further wiring. This directory is the relay source that stack builds from.
+
+## Environment
+
+| Var | Default | Notes |
+|---|---|---|
+| `LIVEKIT_URL` | — | **Client-facing** address, handed to browsers via `/livekit-config`. |
+| `LIVEKIT_SERVER_URL` | `LIVEKIT_URL` | Address the relay itself uses for the RoomService admin API. Differs from the above inside a container network (`http://livekit:7880`). |
+| `OLLAMA_URL` | `http://127.0.0.1:11434` | Resolved **from the relay process** — a hosted relay cannot reach a model on a user's laptop. |
+| `AI_MODEL` | `qwen2.5:14b` | Pulled in-app via `POST /openclaw/pull`. |
+| `CORS_ORIGIN` | `*` | Pin to real origins to lock HTTP **and** WebSocket upgrades. |
+
 ## Status
-Actively used (workspaces, channels, LiveKit tokens, OpenClaw AI). The relay URL is effectively a
-per-deployment setting (`VITE_RELAY_URL`) rather than per-workspace today; a per-workspace override
-for self-hosted enterprise relays is still a Phase 8 item.
+Actively used (workspaces, channels, LiveKit tokens, OpenClaw AI). The relay URL is chosen at
+**runtime** by the client (Settings → Self-hosting), with `VITE_RELAY_URL` only supplying the
+managed default — see `apps/web/src/lib/endpoints.ts`.

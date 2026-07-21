@@ -40,6 +40,11 @@ const DATA_FILE = join(process.env.DATA_DIR ?? HERE, ".data.json");
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET ?? "";
+// Server-side address for the RoomService admin API. Normally the same host the
+// browser uses, but in a container network they differ: clients dial the
+// published `ws://localhost:7880` while the relay reaches the service as
+// `http://livekit:7880`. Falls back to LIVEKIT_URL for single-host deploys.
+const LIVEKIT_SERVER_URL = process.env.LIVEKIT_SERVER_URL || LIVEKIT_URL;
 const livekitConfigured = Boolean(LIVEKIT_URL && LIVEKIT_API_KEY && LIVEKIT_API_SECRET);
 
 // ── Umbry AI (model routing) ──────────────────────────────────────
@@ -396,7 +401,7 @@ async function fetchUnfurl(parsed) {
 // DM rooms (opaque digests, no ":") are never tracked — no metadata leak.
 const activeCalls = new Map();
 const roomSvc = livekitConfigured
-  ? new RoomServiceClient(LIVEKIT_URL.replace(/^ws/, "http"), LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
+  ? new RoomServiceClient(LIVEKIT_SERVER_URL.replace(/^ws/, "http"), LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
   : null;
 
 function callEvent(type, info) {
@@ -1070,6 +1075,65 @@ const httpServer = createServer(async (req, res) => {
       /* down */
     }
     return json(200, { ok: ollamaUp && hasModel, route: AI_ROUTE, model: AI_MODEL, ollama: ollamaUp, hasModel });
+  }
+  if (req.method === "GET" && req.url === "/openclaw/models") {
+    // Models actually present on this box, so the app can show what's ready
+    // instead of asking the user to run `ollama list` in a terminal.
+    try {
+      const r = await fetch(`${OLLAMA_URL}/api/tags`);
+      if (!r.ok) return json(503, { error: "Ollama unreachable" });
+      const tags = await r.json();
+      const models = (tags.models ?? []).map((m) => ({
+        name: m.name,
+        size: m.size ?? 0,
+        modified: m.modified_at ?? null,
+      }));
+      return json(200, { models, active: AI_MODEL });
+    } catch {
+      return json(503, { error: "Ollama unreachable" });
+    }
+  }
+  if (req.method === "POST" && req.url === "/openclaw/pull") {
+    // Download a model, streaming Ollama's NDJSON progress straight through so
+    // the app can render a real progress bar. This is what replaces telling the
+    // user to copy `ollama pull` into a terminal — that command would have run
+    // against THEIR machine, while the model has to land wherever the relay is.
+    if (RELAY_REQUIRE_AUTH && !bearerUserId(req)) return json(401, { error: "Sign in to manage models." });
+    let model = "";
+    try {
+      const body = JSON.parse((await readBody(req)) || "{}");
+      model = String(body.model ?? "").trim();
+    } catch {
+      return json(400, { error: "bad body" });
+    }
+    // Tag grammar only — this string is handed to the model registry, so keep
+    // it from carrying anything path- or URL-shaped.
+    if (!model || !/^[a-zA-Z0-9._\-]+(:[a-zA-Z0-9._\-]+)?$/.test(model)) {
+      return json(400, { error: "invalid model name" });
+    }
+    try {
+      const up = await fetch(`${OLLAMA_URL}/api/pull`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ model, stream: true }),
+      });
+      if (!up.ok || !up.body) {
+        return json(503, { error: `pull failed (${up.status})` });
+      }
+      res.writeHead(200, {
+        "content-type": "application/x-ndjson",
+        "cache-control": "no-cache",
+        // Progress is useless if a proxy buffers it to the end.
+        "x-accel-buffering": "no",
+      });
+      for await (const chunk of up.body) res.write(chunk);
+      return res.end();
+    } catch (e) {
+      const msg = String(e);
+      if (res.headersSent) return res.end();
+      const code = /ECONNREFUSED|fetch failed/.test(msg) ? 503 : 500;
+      return json(code, { error: code === 503 ? "Ollama unreachable — is the local stack running?" : msg });
+    }
   }
   if (req.method === "POST" && req.url === "/openclaw/rewrite") {
     // Draft rewriting: the user's OWN unsent draft only. Pinned to the LOCAL

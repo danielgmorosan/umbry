@@ -24,6 +24,7 @@ import * as fs from "node:fs";
 import { setupUpdater } from "./updater";
 import { winHelloAvailable, winHelloVerify } from "./winHello";
 import { setupAudioCapture } from "./audioCapture";
+import { setupSelfHost } from "./selfhost";
 
 // ── Local bundle (serve the built web app from disk, not over the network) ───
 // Loading the UI remotely from umbry.chat on every launch is what makes the
@@ -496,6 +497,9 @@ if (!app.requestSingleInstanceLock()) {
     // Screenshare audio pipeline (echo-free): streams native/test-tone PCM to the
     // renderer, which publishes it as a MediaStreamTrack (docs/screenshare-audio.md).
     setupAudioCapture(() => win?.webContents ?? null);
+    // Mode B: docker compose control for the local relay + LiveKit + Ollama
+    // stack, driven from Settings → Self-hosting.
+    setupSelfHost();
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
